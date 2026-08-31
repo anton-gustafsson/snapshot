@@ -29,6 +29,10 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 | `apps/gallery` | Interactive demo gallery (list variants, sqlite-backed storage example, etc.) |
 | `apps/demo-angular-widgets` | Angular integration demo |
 
+## Publishing
+
+`.github/workflows/publish.yml` patch-bumps and publishes `@snapshot/core` and `@snapshot/angular` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token with publish rights on the `@snapshot` scope).
+
 ## Deploy
 
 Live at [snapshot.moimob.com](https://snapshot.moimob.com/) — `netlify.toml` builds `apps/docs` and `apps/gallery` together and publishes them as one site, docs at `/` and the gallery at `/examples/`.

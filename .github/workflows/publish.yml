@@ -1,0 +1,51 @@
+name: Publish npm packages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'packages/**'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      - name: Bump patch versions
+        run: |
+          npm version patch --no-git-tag-version -w packages/core
+          npm version patch --no-git-tag-version -w packages/angular
+
+      - name: Build packages
+        run: npm run build:packages
+
+      - name: Publish @snapshot/core
+        run: npm publish -w packages/core --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @snapshot/angular
+        run: npm publish packages/angular/dist --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/core/package.json packages/angular/package.json package-lock.json
+          git commit -m "chore: bump package versions [skip ci]" || echo "nothing to commit"
+          git push

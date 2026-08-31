@@ -1,18 +1,31 @@
 {
   "name": "@snapshot/angular",
   "version": "0.0.1",
-  "private": true,
+  "description": "Thin Angular wrapper around <snapshot-nav-list> from @snapshot/core.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anton-gustafsson/snapshot.git",
+    "directory": "packages/angular"
+  },
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "dependencies": {
-    "@snapshot/core": "*"
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "@angular/core": ">=17"
   },
+  "dependencies": {
+    "@snapshot/core": "*"
+  },
   "devDependencies": {
+    "@angular/compiler": "^21.2.0",
+    "@angular/compiler-cli": "^21.2.0",
     "@angular/core": "^21.2.0",
-    "typescript": "^5.5.0"
+    "ng-packagr": "^21.2.7",
+    "typescript": "~5.9.2"
+  },
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json"
   }
 }

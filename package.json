@@ -10,7 +10,8 @@
     "dev:widgets": "npm run start -w apps/demo-angular-widgets",
     "dev:docs": "npm run dev -w apps/docs",
     "dev:gallery": "npm run dev -w apps/gallery",
-    "build": "npm run build -w apps/demo-angular-widgets"
+    "build": "npm run build -w apps/demo-angular-widgets",
+    "build:packages": "npm run build -w packages/core && npm run build -w packages/angular"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
