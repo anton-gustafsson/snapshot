@@ -1,14 +1,21 @@
 import { LitElement, html, css } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { snapshotService as defaultSnapshotService } from './snapshot-service';
 import type { SnapshotService } from './snapshot-service';
 
 export interface NavItem {
   id: string;
   label: string;
+  /** A plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG instead of text, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). Only the placeholder frame shown before a card's first capture. */
   icon?: string;
   route?: string;
+  description?: string;
+}
+
+function isMarkupIcon(icon: string): boolean {
+  return icon.trimStart().startsWith('<');
 }
 
 export type SnapshotNavListVariant = 'list' | 'icon-only';
@@ -33,10 +40,8 @@ export class SnapshotNavList extends LitElement {
       display: flex;
       flex-direction: column;
       gap: var(--snapshot-nav-list-gap, 0.3rem);
-      counter-reset: frame;
     }
     li {
-      counter-increment: frame;
       display: flex;
       align-items: center;
       gap: 0.7rem;
@@ -122,6 +127,12 @@ export class SnapshotNavList extends LitElement {
       font-size: 1.6rem;
       opacity: 0.4;
     }
+    .icon-lg svg {
+      width: 1.6rem;
+      height: 1.6rem;
+      display: block;
+      fill: currentColor;
+    }
     .thumb-loading {
       display: flex;
       align-items: center;
@@ -169,21 +180,53 @@ export class SnapshotNavList extends LitElement {
       gap: 0.15rem;
       min-width: 0;
     }
-    .frame-number {
-      font-family: var(--snapshot-nav-list-mono-font, ui-monospace, 'SF Mono', Menlo, monospace);
-      font-size: 0.65rem;
-      letter-spacing: 0.04em;
-      color: color-mix(in srgb, currentColor 55%, transparent);
-    }
-    .frame-number::before {
-      content: 'F' counter(frame, decimal-leading-zero);
-    }
     .label {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       color: inherit;
       font-weight: 500;
+    }
+    .description {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: color-mix(in srgb, currentColor 60%, transparent);
+      font-size: 0.75rem;
+    }
+
+    .edit-button {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: color-mix(in srgb, #000 55%, transparent);
+      color: #fff;
+      font-size: 0.85rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    li:hover .edit-button,
+    li:focus-within .edit-button {
+      opacity: 1;
+    }
+    .edit-button:hover {
+      background: color-mix(in srgb, #000 75%, transparent);
+    }
+    .edit-button:focus-visible {
+      opacity: 1;
+      outline: 2px solid var(--frame-accent);
+      outline-offset: 1px;
     }
 
     /* list: a compact thumb reads better in a narrow sidebar than the grid's 160x100 */
@@ -213,32 +256,24 @@ export class SnapshotNavList extends LitElement {
     :host([variant='icon-only']) .meta {
       position: absolute;
       inset: auto 0 0 0;
-      flex-direction: row;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.4rem;
+      align-items: flex-start;
+      gap: 0.15rem;
       padding: 0.4rem 0.5rem;
       color: var(--overlay-text, #fff);
     }
     :host([variant='icon-only']) .label {
       white-space: normal;
     }
-    :host([variant='icon-only']) .frame-number {
-      color: color-mix(in srgb, currentColor 70%, transparent);
-      flex-shrink: 0;
+    :host([variant='icon-only']) .description {
+      color: color-mix(in srgb, var(--overlay-text, #fff) 75%, transparent);
     }
 
-    /* label-position="center": frame number pinned to the corner, title big and centered */
+    /* label-position="center": title big and centered */
     :host([variant='icon-only'][label-position='center']) .meta {
       inset: 0;
       align-items: center;
       justify-content: center;
       padding: 0.6rem;
-    }
-    :host([variant='icon-only'][label-position='center']) .frame-number {
-      position: absolute;
-      top: 0.6rem;
-      left: 0.6rem;
     }
     :host([variant='icon-only'][label-position='center']) .label {
       font-size: 1.15rem;
@@ -256,10 +291,12 @@ export class SnapshotNavList extends LitElement {
   @property({ type: Number, attribute: 'overlay-opacity' }) overlayOpacity = 0.35;
   /** backdrop blur behind the title, in px */
   @property({ type: Number, attribute: 'overlay-blur' }) overlayBlur = 0;
-  /** icon-only only: 'bottom' is the caption strip (default), 'center' pins the frame number to the corner and centers a larger title. */
+  /** icon-only only: 'bottom' is the caption strip (default), 'center' centers a larger title. */
   @property({ reflect: true, attribute: 'label-position' }) labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — set your own instance (e.g. a namespaced or custom-storage SnapshotService) per <snapshot-nav-list> if needed. */
   @property({ attribute: false }) snapshotService: SnapshotService = defaultSnapshotService;
+  /** Shows a top-right edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). */
+  @property({ type: Boolean }) editable = false;
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
@@ -359,6 +396,17 @@ export class SnapshotNavList extends LitElement {
     );
   }
 
+  private edit(e: Event, item: NavItem) {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('nav-edit', {
+        detail: { id: item.id, route: item.route },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   override render() {
     const overlayStyle = this.overlayStyle;
     return html`
@@ -380,13 +428,26 @@ export class SnapshotNavList extends LitElement {
                         <span class="spinner" part="spinner"></span>
                       </div>`
                     : html`<div class="thumb thumb-placeholder" part="thumb" aria-hidden="true">
-                        <span class="icon-lg">${item.icon ?? ''}</span>
+                        <span class="icon-lg"
+                          >${item.icon ? (isMarkupIcon(item.icon) ? unsafeHTML(item.icon) : item.icon) : ''}</span
+                        >
                       </div>`}
                 <div class="image-overlay" part="overlay" style=${styleMap(overlayStyle)}></div>
+                ${this.editable
+                  ? html`<button
+                      type="button"
+                      class="edit-button"
+                      part="edit-button"
+                      aria-label="Edit ${item.label}"
+                      @click=${(e: Event) => this.edit(e, item)}
+                    >
+                      ✎
+                    </button>`
+                  : ''}
               </div>
               <div class="meta" part="meta">
-                <span class="frame-number" part="frame-number" aria-hidden="true"></span>
                 <span class="label" part="label">${item.label}</span>
+                ${item.description ? html`<span class="description" part="description">${item.description}</span>` : ''}
               </div>
             </li>
           `,

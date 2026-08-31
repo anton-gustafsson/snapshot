@@ -39,7 +39,9 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
     [attr.overlay-opacity]="overlayOpacity"
     [attr.overlay-blur]="overlayBlur"
     [attr.label-position]="labelPosition"
+    [attr.editable]="editable ? '' : null"
     (nav-select)="onNavSelect($event)"
+    (nav-edit)="onNavEdit($event)"
   ></snapshot-nav-list>`,
 })
 export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
@@ -48,11 +50,14 @@ export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
   @Input() overlayTint: 'dark' | 'light' | 'none' = 'dark';
   @Input() overlayOpacity = 0.35;
   @Input() overlayBlur = 0;
-  /** 'bottom' is the caption strip (default); 'center' pins the frame number to the corner and centers a larger title (icon-only variant only). */
+  /** 'bottom' is the caption strip (default); 'center' centers a larger title (icon-only variant only). */
   @Input() labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — pass your own instance (e.g. a namespaced or custom-storage SnapshotService) if needed. */
   @Input() snapshotService: SnapshotService = defaultSnapshotService;
+  /** Shows a top-right edit button per card. Off by default — clicking it fires `edit` instead of `select`; the consuming app decides what "edit" means (e.g. open its own dialog component). */
+  @Input() editable = false;
   @Output() select = new EventEmitter<{ id: string; route?: string }>();
+  @Output() edit = new EventEmitter<{ id: string; route?: string }>();
 
   @ViewChild('el') private elRef!: ElementRef<SnapshotNavList>;
 
@@ -67,5 +72,9 @@ export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
 
   onNavSelect(event: Event) {
     this.select.emit((event as CustomEvent<{ id: string; route?: string }>).detail);
+  }
+
+  onNavEdit(event: Event) {
+    this.edit.emit((event as CustomEvent<{ id: string; route?: string }>).detail);
   }
 }

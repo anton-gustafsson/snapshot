@@ -1,4 +1,5 @@
-import { Component, ElementRef, computed, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ElementRef, computed, signal, viewChild, ChangeDetectionStrategy, inject } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
 import { snapshotService } from '@anton-gustafsson/snapshot-core';
 import type { NavItem } from '@anton-gustafsson/snapshot-core';
@@ -9,6 +10,12 @@ import {
   type ReservedSpace,
   type DashboardDataDto,
 } from '@dragonworks/ngx-dashboard';
+import { EditDashboardDialogComponent } from './edit-dashboard-dialog.component';
+
+// Custom icons: <snapshot-nav-list> renders `icon` as raw markup instead of text
+// whenever it starts with '<', so any inline SVG works here — no emoji required.
+const OPS_ICON = `<svg viewBox="0 0 24 24"><path d="M19.4 13a7.4 7.4 0 0 0 .06-1 7.4 7.4 0 0 0-.06-1l2.1-1.6a.5.5 0 0 0 .12-.66l-2-3.4a.5.5 0 0 0-.6-.22l-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.42h-4a.5.5 0 0 0-.5.42l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.22l-2 3.4a.5.5 0 0 0 .12.66L4 11a7.4 7.4 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.12.66l2 3.4a.5.5 0 0 0 .6.22l2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6a.5.5 0 0 0 .5.42h4a.5.5 0 0 0 .5-.42l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1a.5.5 0 0 0 .6-.22l2-3.4a.5.5 0 0 0-.12-.66L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>`;
+const WEATHER_ICON = `<svg viewBox="0 0 24 24"><path d="M6.5 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 17.9 8.1 4.5 4.5 0 0 1 17.5 18h-11Z"/></svg>`;
 
 @Component({
   selector: 'app-root',
@@ -18,9 +25,11 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
+  private dialog = inject(MatDialog);
+
   items: NavItem[] = [
-    { id: 'ops', label: 'Operations', icon: '⚙' },
-    { id: 'weather', label: 'Weather', icon: '☀' },
+    { id: 'ops', label: 'Operations', icon: OPS_ICON, description: 'Fleet health and throughput' },
+    { id: 'weather', label: 'Weather', icon: WEATHER_ICON, description: 'Regional forecast widgets' },
   ];
 
   activeItem = signal<NavItem | null>(null);
@@ -56,6 +65,21 @@ export class App {
 
   toggleEditMode() {
     this.editMode.update((m) => !m);
+  }
+
+  onEditItem(detail: { id: string }) {
+    const item = this.items.find((i) => i.id === detail.id);
+    if (!item) return;
+    this.dialog
+      .open(EditDashboardDialogComponent, { data: item })
+      .afterClosed()
+      .subscribe((result: { label: string; description: string } | undefined) => {
+        if (!result) return;
+        this.items = this.items.map((i) => (i.id === item.id ? { ...i, label: result.label, description: result.description } : i));
+        if (this.activeItem()?.id === item.id) {
+          this.activeItem.set({ ...this.activeItem()!, label: result.label, description: result.description });
+        }
+      });
   }
 
   async save() {

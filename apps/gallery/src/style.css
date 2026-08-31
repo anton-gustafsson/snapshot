@@ -162,6 +162,9 @@ snapshot-nav-list {
   background: #14161c;
   padding: 0.8rem;
   border-radius: 12px;
+  /* Debug: outline marks exactly the element passed to service.capture() on leave. */
+  outline: 2px dashed #ff5a1f;
+  outline-offset: 4px;
 }
 
 .dash-widget {

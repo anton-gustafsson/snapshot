@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <h1>Dashboards</h1>
     <p class="hint">ngx-dashboard widgets, captured by @anton-gustafsson/snapshot-core</p>
-    <ngx-snapshot-nav-list [items]="items" variant="list" (select)="onSelect($event)" />
+    <ngx-snapshot-nav-list [items]="items" variant="icon-only" [editable]="true" (select)="onSelect($event)" (edit)="onEditItem($event)" />
   </aside>
 
   <main class="content">
