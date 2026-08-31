@@ -69,17 +69,23 @@ export function render(container: HTMLElement) {
   demo.append(h3Overlay);
   const overlayP = document.createElement('p');
   overlayP.innerHTML =
-    "Same idea applied to <code>&lt;snapshot-nav-list&gt;</code>'s existing <code>overlay-tint</code>/<code>overlay-opacity</code> — no new feature needed.";
+    "Same idea applied to <code>&lt;snapshot-nav-list&gt;</code>'s existing <code>overlay-tint</code>/<code>overlay-opacity</code>, plus " +
+    '<code>--snapshot-nav-list-overlay-margin</code>/<code>--snapshot-nav-list-overlay-radius</code> (both set to <code>6px</code>/<code>8px</code> here) floating the caption into a rounded chip instead of a flush strip.';
   demo.append(overlayP);
 
   const overlayRow = document.createElement('div');
   overlayRow.className = 'overlay-row';
-  const overlaySteps: Array<{ tint: 'light' | 'dark'; opacity: number; caption: string }> = [
-    { tint: 'light', opacity: 0.05, caption: 'white-5' },
-    { tint: 'light', opacity: 0.25, caption: 'white-25' },
-    { tint: 'light', opacity: 0.5, caption: 'white-50' },
-    { tint: 'dark', opacity: 0.05, caption: 'black-5' },
-    { tint: 'dark', opacity: 0.25, caption: 'black-25' },
+  const overlaySteps: Array<{ tint: 'light' | 'dark' | 'none'; opacity: number; blur: number; caption: string }> = [
+    { tint: 'none', opacity: 0, blur: 40, caption: 'blur' },
+    { tint: 'none', opacity: 0, blur: 0, caption: 'clear' },
+    { tint: 'light', opacity: 0.05, blur: 0, caption: 'white-5' },
+    { tint: 'light', opacity: 0.1, blur: 0, caption: 'white-10' },
+    { tint: 'light', opacity: 0.25, blur: 0, caption: 'white-25' },
+    { tint: 'light', opacity: 0.5, blur: 0, caption: 'white-50' },
+    { tint: 'light', opacity: 1, blur: 0, caption: 'white-100' },
+    { tint: 'dark', opacity: 0.05, blur: 0, caption: 'black-5' },
+    { tint: 'dark', opacity: 0.1, blur: 0, caption: 'black-10' },
+    { tint: 'dark', opacity: 0.25, blur: 0, caption: 'black-25' },
   ];
   for (const step of overlaySteps) {
     const cell = document.createElement('div');
@@ -87,14 +93,15 @@ export function render(container: HTMLElement) {
     const caption = document.createElement('p');
     caption.className = 'overlay-caption';
     caption.textContent = step.caption;
-    cell.append(
-      caption,
-      makeNavList([DASHBOARDS[0]], {
-        variant: 'icon-only',
-        'overlay-tint': step.tint,
-        'overlay-opacity': String(step.opacity),
-      }),
-    );
+    const navList = makeNavList([DASHBOARDS[0]], {
+      variant: 'icon-only',
+      'overlay-tint': step.tint,
+      'overlay-opacity': String(step.opacity),
+      'overlay-blur': String(step.blur),
+    });
+    navList.style.setProperty('--snapshot-nav-list-overlay-margin', '6px');
+    navList.style.setProperty('--snapshot-nav-list-overlay-radius', '8px');
+    cell.append(caption, navList);
     overlayRow.append(cell);
   }
   demo.append(overlayRow);

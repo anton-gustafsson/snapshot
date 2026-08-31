@@ -256,10 +256,15 @@ export class SnapshotNavList extends LitElement {
     :host([variant='icon-only']) .meta {
       position: absolute;
       inset: auto 0 0 0;
+      margin: var(--snapshot-nav-list-overlay-margin, 0);
+      border-radius: var(--snapshot-nav-list-overlay-radius, 0);
       align-items: flex-start;
       gap: 0.15rem;
       padding: 0.4rem 0.5rem;
       color: var(--overlay-text, #fff);
+      background: var(--overlay-bg, transparent);
+      backdrop-filter: blur(var(--overlay-blur, 0px));
+      -webkit-backdrop-filter: blur(var(--overlay-blur, 0px));
     }
     :host([variant='icon-only']) .label {
       white-space: normal;
@@ -285,8 +290,8 @@ export class SnapshotNavList extends LitElement {
   @property({ type: Array }) items: NavItem[] = [];
   @property({ reflect: true }) variant: SnapshotNavListVariant = 'icon-only';
 
-  /** icon-only tile overlay: tint behind the title so it stays legible over any image. */
-  @property({ attribute: 'overlay-tint' }) overlayTint: 'dark' | 'light' | 'none' = 'dark';
+  /** icon-only tile overlay: tint behind the title so it stays legible over any image. Transparent by default — opt into a scrim explicitly. */
+  @property({ attribute: 'overlay-tint' }) overlayTint: 'dark' | 'light' | 'none' = 'none';
   /** overlay tint strength, 0-1 */
   @property({ type: Number, attribute: 'overlay-opacity' }) overlayOpacity = 0.35;
   /** backdrop blur behind the title, in px */
@@ -445,7 +450,7 @@ export class SnapshotNavList extends LitElement {
                     </button>`
                   : ''}
               </div>
-              <div class="meta" part="meta">
+              <div class="meta" part="meta" style=${styleMap(overlayStyle)}>
                 <span class="label" part="label">${item.label}</span>
                 ${item.description ? html`<span class="description" part="description">${item.description}</span>` : ''}
               </div>
