@@ -6,7 +6,9 @@ import {
   Output,
   ViewChild,
   CUSTOM_ELEMENTS_SCHEMA,
-  type DoCheck,
+  type AfterViewInit,
+  type OnChanges,
+  type SimpleChanges,
 } from '@angular/core';
 import '@snapshot/core';
 import { snapshotService as defaultSnapshotService } from '@snapshot/core';
@@ -20,12 +22,11 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
  * HTML attribute); the rest are plain string/number values forwarded as
  * attributes for the Lit element's own attribute converters to parse.
  *
- * `items` is set by hand in `ngDoCheck` instead of a template binding: both
- * Angular's property binding and Lit's default property dirty-check only
- * propagate a change when the array *reference* changes, so a consumer
- * mutating `items` in place (`.push()`) would otherwise never reach the
- * element. Reassigning a fresh shallow copy every check makes that visible
- * to both regardless of what the consumer does with the reference.
+ * `items` is set by hand (ngOnChanges + ngAfterViewInit) instead of a
+ * template binding: Angular's property binding only propagates when the
+ * array *reference* changes. That's the correct, zoneless-safe behavior —
+ * pass a new array when `items` changes rather than mutating in place
+ * (`.push()`), since nothing here polls for in-place mutations.
  */
 @Component({
   selector: 'ngx-snapshot-nav-list',
@@ -41,7 +42,7 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
     (nav-select)="onNavSelect($event)"
   ></snapshot-nav-list>`,
 })
-export class SnapshotNavListComponent implements DoCheck {
+export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
   @Input() items: NavItem[] = [];
   @Input() variant: SnapshotNavListVariant = 'icon-only';
   @Input() overlayTint: 'dark' | 'light' | 'none' = 'dark';
@@ -55,7 +56,12 @@ export class SnapshotNavListComponent implements DoCheck {
 
   @ViewChild('el') private elRef!: ElementRef<SnapshotNavList>;
 
-  ngDoCheck() {
+  ngOnChanges(changes: SimpleChanges) {
+    // Guard: ngOnChanges fires before the view (and @ViewChild) exists on the first pass.
+    if (changes['items'] && this.elRef) this.elRef.nativeElement.items = [...this.items];
+  }
+
+  ngAfterViewInit() {
     this.elRef.nativeElement.items = [...this.items];
   }
 

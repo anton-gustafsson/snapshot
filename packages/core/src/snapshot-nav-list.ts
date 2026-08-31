@@ -263,6 +263,8 @@ export class SnapshotNavList extends LitElement {
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
+  /** In-flight dedup guard, separate from `loadingIds` (which is only for spinner display) so a repeat `loadThumb` call for an id already being fetched is a no-op. */
+  private fetchingIds = new Set<string>();
   private unsubscribe?: () => void;
 
   private subscribeToService() {
@@ -295,29 +297,42 @@ export class SnapshotNavList extends LitElement {
     this.unsubscribe?.();
   }
 
-  override updated(changed: Map<string, unknown>) {
-    if (changed.has('snapshotService')) {
-      this.subscribeToService();
-    }
+  // Runs before render, so mutating `loadingIds` here lands in the *current*
+  // update instead of triggering Lit's "update scheduled from updated()"
+  // warning that came from doing this same flip inside updated().
+  override willUpdate(changed: Map<string, unknown>) {
     if (changed.has('items')) {
       const ids = new Set(this.items.map((item) => item.id));
       for (const id of this.thumbs.keys()) {
         if (!ids.has(id)) this.thumbs.delete(id);
       }
+      for (const item of this.items) {
+        if (!this.thumbs.has(item.id) && !this.fetchingIds.has(item.id)) {
+          this.loadingIds.add(item.id);
+        }
+      }
+    }
+  }
+
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has('snapshotService')) {
+      this.subscribeToService();
+    }
+    if (changed.has('items')) {
       this.items.forEach((item) => this.loadThumb(item.id));
     }
   }
 
   private async loadThumb(id: string) {
-    if (this.thumbs.has(id) || this.loadingIds.has(id)) return;
-    this.loadingIds.add(id);
-    this.requestUpdate();
+    if (this.thumbs.has(id) || this.fetchingIds.has(id)) return;
+    this.fetchingIds.add(id);
     try {
       const url = await this.snapshotService.get(id);
       if (url) this.thumbs.set(id, url);
     } catch (err) {
       console.error(`snapshot-nav-list: failed to load thumbnail for "${id}"`, err);
     } finally {
+      this.fetchingIds.delete(id);
       this.loadingIds.delete(id);
       this.requestUpdate();
     }
