@@ -10,9 +10,9 @@ import {
   type OnChanges,
   type SimpleChanges,
 } from '@angular/core';
-import '@snapshot/core';
-import { snapshotService as defaultSnapshotService } from '@snapshot/core';
-import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService } from '@snapshot/core';
+import '@anton-gustafsson/snapshot-core';
+import { snapshotService as defaultSnapshotService } from '@anton-gustafsson/snapshot-core';
+import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService } from '@anton-gustafsson/snapshot-core';
 
 /**
  * Thin Angular wrapper around <snapshot-nav-list>. Keeps CUSTOM_ELEMENTS_SCHEMA

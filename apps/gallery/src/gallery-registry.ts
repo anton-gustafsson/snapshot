@@ -1,4 +1,4 @@
-import type { SnapshotService } from '@snapshot/core';
+import type { SnapshotService } from '@anton-gustafsson/snapshot-core';
 
 export interface CaptureTarget {
   /** The service a captured dashboard should be saved through — whichever the source page itself uses. */

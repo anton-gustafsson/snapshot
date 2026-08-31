@@ -1,6 +1,6 @@
-import '@snapshot/core';
-import { SnapshotService, IndexedDbSnapshotStorage } from '@snapshot/core';
-import type { NavItem, SnapshotStorage } from '@snapshot/core';
+import '@anton-gustafsson/snapshot-core';
+import { SnapshotService, IndexedDbSnapshotStorage } from '@anton-gustafsson/snapshot-core';
+import type { NavItem, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 import { router } from './router';
 import { registerCaptureTarget } from './gallery-registry';
 

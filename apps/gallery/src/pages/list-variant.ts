@@ -1,4 +1,4 @@
-import { snapshotService } from '@snapshot/core';
+import { snapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeClickableNavList, pageHeader } from '../gallery-shared';
 
 export const path = '/list-variant';

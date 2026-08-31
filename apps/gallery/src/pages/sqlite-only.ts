@@ -1,4 +1,4 @@
-import { SnapshotService } from '@snapshot/core';
+import { SnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeNavList, pageHeader, proceduralBlob, toClickableItems } from '../gallery-shared';
 import { registerCaptureTarget } from '../gallery-registry';
 import { router } from '../router';
