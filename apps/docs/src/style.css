@@ -1,0 +1,330 @@
+:root {
+  color-scheme: dark;
+  --ink: #120f0c;
+  --panel: #1c1914;
+  --panel-raised: #221e18;
+  --hairline: #322d25;
+  --paper: #f2ece0;
+  --ash: #9c8f7c;
+  --safelight: #ff5a1f;
+
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--ink);
+  color: var(--paper);
+  background-image: radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--safelight) 8%, transparent), transparent 45%);
+  background-attachment: fixed;
+}
+#app {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 1.75rem 6rem;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  color: var(--paper);
+}
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+/* topbar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 0;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid transparent;
+}
+.topbar-mark {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+.topbar-mark::before {
+  content: '◆ ';
+  color: var(--safelight);
+}
+.topbar-links {
+  display: flex;
+  gap: 1.4rem;
+}
+.topbar-links a {
+  font-size: 0.82rem;
+  color: var(--ash);
+  text-decoration: none;
+}
+.topbar-links a:hover {
+  color: var(--safelight);
+}
+
+/* hero */
+.hero {
+  padding: 3.5rem 0 3rem;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--safelight);
+  margin: 0 0 0.9rem;
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0 0 1.3rem;
+  color: var(--paper);
+}
+.hero-sub {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--ash);
+  max-width: 46ch;
+  margin: 0 0 1.8rem;
+}
+.hero-sub code {
+  color: var(--paper);
+}
+.install {
+  display: inline-block;
+  color: var(--safelight);
+}
+.install code {
+  color: inherit;
+}
+.install::before {
+  content: '$ ';
+  color: var(--ash);
+}
+
+/* steps */
+.steps {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--hairline);
+}
+.steps ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+}
+.steps li {
+  min-width: 0;
+}
+.step-index {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 1.6rem;
+  color: color-mix(in srgb, var(--safelight) 70%, var(--ash));
+  margin-bottom: 0.3rem;
+}
+.steps h3 {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: var(--paper);
+}
+.steps p {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ash);
+  margin: 0;
+}
+
+/* generic section rhythm */
+section {
+  padding: 3rem 0;
+  border-top: 1px solid var(--hairline);
+}
+section h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.6rem;
+  color: var(--paper);
+}
+section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1.6rem 0 0.7rem;
+  color: var(--paper);
+}
+section h3:first-of-type {
+  margin-top: 1.2rem;
+}
+section h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 1.4rem 0 0.5rem;
+  color: var(--paper);
+}
+.section-sub {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ash);
+  max-width: 54ch;
+  margin: 0 0 1.2rem;
+}
+
+/* try it / playground */
+.playground {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.playground-panel {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.playground-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.playground-nav {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.playground-nav snapshot-nav-list {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 0.5rem;
+  --snapshot-nav-list-accent: var(--safelight);
+  --snapshot-nav-list-font: var(--font-body);
+  --snapshot-nav-list-mono-font: var(--font-mono);
+}
+.dashboard-canvas {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.6rem;
+  padding: 1rem;
+  min-height: 160px;
+  background: var(--panel);
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+}
+.widget {
+  width: 100px;
+  height: 70px;
+  border-radius: 7px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+button {
+  font: inherit;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 7px;
+  border: 1px solid var(--hairline);
+  background: var(--panel-raised);
+  color: var(--paper);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+button:hover {
+  border-color: color-mix(in srgb, var(--safelight) 50%, var(--hairline));
+}
+button:focus-visible {
+  outline: 2px solid var(--safelight);
+  outline-offset: 1px;
+}
+
+/* reference tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin: 0 0 0.5rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.7rem 0.55rem 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  font-weight: 500;
+}
+td {
+  color: var(--paper);
+}
+td:last-child {
+  color: var(--ash);
+}
+
+.colophon {
+  padding: 2.5rem 0 1rem;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ash);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .steps ol {
+    grid-template-columns: 1fr;
+  }
+}

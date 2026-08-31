@@ -1,0 +1,77 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+.layout {
+  display: flex;
+  height: 100%;
+}
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  padding: 1.5rem;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+  overflow: auto;
+}
+.sidebar h1 {
+  font-size: 1.2rem;
+  margin: 0 0 0.4rem;
+}
+.hint {
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 1rem;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+.toolbar h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.actions button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--mat-sys-outline);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  font: inherit;
+}
+.actions button:hover {
+  background: var(--mat-sys-surface-variant);
+}
+.dashboard-viewport {
+  position: relative;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.dashboard-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+.widget-list {
+  width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface);
+}
+.empty-hint {
+  padding: 2rem;
+  color: var(--mat-sys-on-surface-variant);
+}

@@ -1,0 +1,185 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #0f1115;
+  color: #e8e9ec;
+}
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.side-nav {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.side-nav-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0.5rem;
+  color: #ff5a1f;
+}
+
+.side-nav a {
+  color: #a6a9b3;
+  text-decoration: none;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.side-nav a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8e9ec;
+}
+
+.side-nav a.active {
+  background: rgba(255, 90, 31, 0.15);
+  color: #ff5a1f;
+}
+
+main {
+  padding: 2rem 2.5rem 6rem;
+  max-width: 900px;
+}
+
+#page-root h2 {
+  margin: 0 0 0.3rem;
+}
+
+#page-root > p {
+  color: #a6a9b3;
+  margin: 0 0 1.2rem;
+  max-width: 60ch;
+}
+
+.overlay-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.overlay-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overlay-caption {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #a6a9b3;
+}
+
+#page-root h3 {
+  margin: 2rem 0 0.3rem;
+  font-size: 1rem;
+}
+
+.overlay-controls {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.overlay-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #a6a9b3;
+}
+
+.overlay-controls select,
+.overlay-controls input[type='range'] {
+  accent-color: #ff5a1f;
+}
+
+button {
+  font: inherit;
+  background: rgba(255, 90, 31, 0.15);
+  color: #ff5a1f;
+  border: 1px solid rgba(255, 90, 31, 0.4);
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+button:hover {
+  background: rgba(255, 90, 31, 0.25);
+}
+
+snapshot-nav-list {
+  --snapshot-nav-list-accent: #ff5a1f;
+}
+
+.dashboard-back {
+  display: inline-block;
+  color: #a6a9b3;
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.2rem;
+}
+
+.dashboard-back:hover {
+  color: #e8e9ec;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 90px;
+  gap: 0.8rem;
+  max-width: 700px;
+  /* html2canvas falls back to white for a transparent background — give the
+     capture target a real one so the thumbnail matches the page's theme
+     instead of always coming out light. */
+  background: #14161c;
+  padding: 0.8rem;
+  border-radius: 12px;
+}
+
+.dash-widget {
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.dash-widget-label {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.dash-widget-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}

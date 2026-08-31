@@ -1,0 +1,32 @@
+<div class="layout">
+  <aside class="sidebar">
+    <h1>Dashboards</h1>
+    <p class="hint">ngx-dashboard widgets, captured by @snapshot/core</p>
+    <app-snapshot-nav-list [items]="items" variant="list" (select)="onSelect($event)" />
+  </aside>
+
+  <main class="content">
+    @if (activeItem(); as item) {
+      <div class="toolbar">
+        <h2>{{ item.label }}</h2>
+        <div class="actions">
+          <button (click)="toggleEditMode()">{{ editMode() ? 'Exit edit' : 'Edit widgets' }}</button>
+          <button (click)="save()">Save snapshot</button>
+        </div>
+      </div>
+
+      <div class="dashboard-viewport">
+        <div class="dashboard-wrapper" #captureTarget>
+          @if (dashboardConfig(); as config) {
+            <ngx-dashboard [dashboardData]="config" [editMode]="editMode()" [reservedSpace]="reservedSpace()" />
+          }
+        </div>
+        @if (editMode()) {
+          <ngx-dashboard-widget-list class="widget-list" />
+        }
+      </div>
+    } @else {
+      <p class="empty-hint">Pick a dashboard from the menu.</p>
+    }
+  </main>
+</div>

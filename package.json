@@ -1,0 +1,18 @@
+{
+  "name": "nav-snapshot-viewer",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n widgets,docs,gallery -c magenta,cyan,yellow \"npm run start -w apps/demo-angular-widgets\" \"npm run dev -w apps/docs\" \"npm run dev -w apps/gallery\"",
+    "dev:widgets": "npm run start -w apps/demo-angular-widgets",
+    "dev:docs": "npm run dev -w apps/docs",
+    "dev:gallery": "npm run dev -w apps/gallery",
+    "build": "npm run build -w apps/demo-angular-widgets"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

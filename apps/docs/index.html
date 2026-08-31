@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nav List — docs</title>
+    <meta
+      name="description"
+      content="A pluggable snapshot service that turns any DOM element into a stored, shareable image — with an optional snapshot-nav-list web component to display them."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,680&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <nav class="topbar">
+        <span class="topbar-mark">snapshot-nav-list</span>
+        <div class="topbar-links">
+          <a href="#service">Service</a>
+          <a href="#try-it">Try it</a>
+          <a href="#reference">snapshot-nav-list</a>
+          <a href="#frameworks">Frameworks</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <p class="eyebrow">A service, not a widget</p>
+        <h1>Remember what a view<br />looked like.</h1>
+        <p class="hero-sub">
+          <code>snapshotService.capture(el, id)</code> turns any DOM element into a stored
+          image, keyed however you want, on whatever backend you want.
+          <code>&lt;snapshot-nav-list&gt;</code> is one thing you can point it at — not a requirement.
+          Use the service on its own and render the result anywhere.
+        </p>
+        <pre class="install"><code>npm install @snapshot/core</code></pre>
+      </header>
+
+      <section class="steps" aria-label="How it works">
+        <ol>
+          <li>
+            <span class="step-index">01</span>
+            <h3>Capture on the way out</h3>
+            <p>Call <code>snapshotService.capture(el, id)</code> when the user leaves a view — any element, any framework.</p>
+          </li>
+          <li>
+            <span class="step-index">02</span>
+            <h3>It's stored, keyed by id</h3>
+            <p>IndexedDB by default. Swap in your own backend so it follows the user across devices.</p>
+          </li>
+          <li>
+            <span class="step-index">03</span>
+            <h3>Show it wherever</h3>
+            <p><code>snapshotService.get(id)</code> returns the image URL — an <code>&lt;img&gt;</code>, a <code>&lt;snapshot-nav-list&gt;</code> tile, anything.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="service" class="service">
+        <p class="eyebrow">The service</p>
+        <h2>No UI required.</h2>
+        <p class="section-sub">
+          This is the whole surface area. No component to mount, no framework to adopt —
+          just a function that captures an element and a function that reads it back.
+        </p>
+        <pre><code>import { snapshotService } from '@snapshot/core';
+
+// capture anything — a report panel, a canvas, a form preview
+const panel = document.querySelector('#quarterly-report');
+await snapshotService.capture(panel, 'q3-report');
+
+// read it back wherever — a table cell, an email preview, your own component
+const url = await snapshotService.get('q3-report');
+thumbnailImg.src = url;
+
+// react to updates from any tab, any origin-mate that shares your storage
+snapshotService.subscribe((id, url) => updateThumbnail(id, url));</code></pre>
+
+        <h3>Configuration</h3>
+        <table>
+          <thead>
+            <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>storage</code></td><td><code>SnapshotStorage</code></td><td>IndexedDB</td><td>Where captures are saved — see below.</td></tr>
+            <tr><td><code>scale</code></td><td><code>number</code></td><td><code>0.4</code></td><td>html2canvas render scale. Lower = smaller, faster captures.</td></tr>
+            <tr><td><code>keyPrefix</code></td><td><code>string</code></td><td><code>''</code></td><td>Prepended to every id in storage and in the cross-tab broadcast channel name — namespaces multiple services (or multiple apps) sharing one backend so their keys can't collide.</td></tr>
+          </tbody>
+        </table>
+        <pre><code>import { SnapshotService } from '@snapshot/core';
+
+// two independent namespaces, same IndexedDB, no collisions
+export const salesSnapshots = new SnapshotService({ keyPrefix: 'sales:' });
+export const supportSnapshots = new SnapshotService({ keyPrefix: 'support:' });</code></pre>
+
+        <h3>Storage is pluggable</h3>
+        <p class="section-sub">
+          Ship it as-is for a single-device tool, or point it at your own backend so thumbnails
+          follow the user across machines.
+        </p>
+        <pre><code>import { SnapshotService, type SnapshotStorage } from '@snapshot/core';
+
+class ApiSnapshotStorage implements SnapshotStorage {
+  async save(id: string, blob: Blob) {
+    const body = new FormData();
+    body.append('file', blob, `${id}.png`);
+    const res = await fetch(`/api/snapshots/${id}`, { method: 'POST', body });
+    return (await res.json()).url;
+  }
+  load(id: string) {
+    return fetch(`/api/snapshots/${id}`)
+      .then((r) => (r.ok ? r.json().then((j) => j.url) : null));
+  }
+}
+
+export const snapshotService = new SnapshotService({
+  storage: new ApiSnapshotStorage(),
+});</code></pre>
+
+        <h3>Storage recipes</h3>
+        <p class="section-sub">
+          Three common configurations. Live, working versions of all three are in the
+          <code>gallery</code> app — <code>/icon-grid</code> etc. use the default, and
+          <code>/sqlite</code> / <code>/sqlite-only</code> cover the other two end to end.
+        </p>
+
+        <h4>IndexedDB only (the default)</h4>
+        <p class="section-sub">No <code>storage</code> option needed — this is what you get for free.</p>
+        <pre><code>import { SnapshotService } from '@snapshot/core';
+
+export const snapshotService = new SnapshotService();
+// same as: new SnapshotService({ storage: new IndexedDbSnapshotStorage() })</code></pre>
+
+        <h4>A real database only, no fallback</h4>
+        <p class="section-sub">
+          Point <code>storage</code> straight at it. Every <code>get()</code> is a real query —
+          no client-side cache in front of it, so a slow backend means a slow (but honest) spinner.
+        </p>
+        <pre><code>import { SnapshotService, type SnapshotStorage } from '@snapshot/core';
+
+class SqlSnapshotStorage implements SnapshotStorage {
+  async save(id: string, blob: Blob) { /* INSERT/UPSERT, return a displayable URL */ }
+  async load(id: string) { /* SELECT, return a displayable URL or null */ }
+  async remove(id: string) { /* DELETE */ }
+}
+
+export const snapshotService = new SnapshotService({
+  storage: new SqlSnapshotStorage(),
+});</code></pre>
+        <p class="section-sub">
+          The gallery's <code>/sqlite-only</code> page is exactly this, with
+          <a href="https://sql.js.org/" target="_blank" rel="noopener">sql.js</a> (real SQLite,
+          compiled to WASM) standing in for the database — see
+          <code>apps/gallery/src/sqlite-storage.ts</code>.
+        </p>
+
+        <h4>Database + IndexedDB preload (stale-while-revalidate)</h4>
+        <p class="section-sub">
+          Serve an instant cached image from IndexedDB while the slower, authoritative source loads
+          in the background, then swap the tile to the fresh image live — no remount — via
+          <code>SnapshotService.publish()</code>.
+        </p>
+        <pre><code>import { SnapshotService, IndexedDbSnapshotStorage, type SnapshotStorage } from '@snapshot/core';
+
+class TieredSnapshotStorage implements SnapshotStorage {
+  constructor(
+    private fast: SnapshotStorage,   // IndexedDbSnapshotStorage
+    private slow: SnapshotStorage,   // your real backend
+    private onRevalidate: (id: string, url: string) => void,
+  ) {}
+
+  async load(id: string) {
+    const cached = await this.fast.load(id);
+    void this.revalidate(id, cached); // don't await — return the cache immediately
+    return cached;
+  }
+
+  private async revalidate(id: string, cached: string | null) {
+    const fresh = await this.slow.load(id);
+    if (!fresh || fresh === cached) return;
+    await this.fast.save(id, await fetch(fresh).then((r) => r.blob()));
+    this.onRevalidate(id, fresh); // -> snapshotService.publish(id, fresh)
+  }
+  // save()/remove() should write through to both tiers — see the gallery for the full version
+}
+
+let snapshotService: SnapshotService;
+const storage = new TieredSnapshotStorage(
+  new IndexedDbSnapshotStorage(),
+  new SqlSnapshotStorage(),
+  (id, url) => snapshotService.publish(id, url),
+);
+snapshotService = new SnapshotService({ storage });</code></pre>
+        <p class="section-sub">
+          Full version — including write-through <code>save()</code>/<code>remove()</code> and the
+          <code>keyPrefix</code> handling this snippet skips — in
+          <code>apps/gallery/src/sqlite-storage.ts</code> (<code>TieredSnapshotStorage</code>), wired
+          up in <code>apps/gallery/src/pages/sqlite.ts</code>.
+        </p>
+      </section>
+
+      <section id="try-it" class="try-it">
+        <p class="eyebrow">Optional UI companion</p>
+        <h2>&lt;snapshot-nav-list&gt; — one way to show what the service captured.</h2>
+        <p class="section-sub">This is a live component, not a screenshot. Add a widget, save, and watch the thumbnail update.</p>
+        <div class="playground">
+          <div class="playground-panel">
+            <div class="playground-toolbar">
+              <button id="pg-add">+ Add widget</button>
+              <button id="pg-save">Save snapshot</button>
+            </div>
+            <div id="pg-canvas" class="dashboard-canvas"></div>
+          </div>
+          <div id="pg-nav-mount" class="playground-nav"></div>
+        </div>
+      </section>
+
+      <section id="reference" class="reference">
+        <p class="eyebrow">snapshot-nav-list reference</p>
+        <h2>If you do use the component</h2>
+        <p class="section-sub">Everything below is specific to the optional <code>&lt;snapshot-nav-list&gt;</code> element — skip it entirely if you're only using the service.</p>
+
+        <h3>Properties</h3>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>items</code></td><td><code>NavItem[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute.</td></tr>
+            <tr><td><code>variant</code></td><td><code>'list' | 'icon-only'</code></td><td><code>'icon-only'</code></td><td>Row-with-label vs. a grid of tiles with the title on top.</td></tr>
+            <tr><td><code>overlay-tint</code></td><td><code>'dark' | 'light' | 'none'</code></td><td><code>'dark'</code></td><td>Scrim behind the image so overlaid text stays legible.</td></tr>
+            <tr><td><code>overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0.35</code></td><td>Scrim strength.</td></tr>
+            <tr><td><code>overlay-blur</code></td><td><code>number</code> (px)</td><td><code>0</code></td><td>Backdrop blur applied to the image only.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Events</h3>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Detail</th><th>Fires when</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>nav-select</code></td><td><code>{ id: string, route?: string }</code></td><td>An item is clicked or activated with Enter.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>CSS custom properties</h3>
+        <table>
+          <thead>
+            <tr><th>Property</th><th>Default</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>--snapshot-nav-list-accent</code></td><td><code>#ff5a1f</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-font</code></td><td><code>inherit</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-mono-font</code></td><td><code>ui-monospace, monospace</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-radius</code></td><td><code>10px</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-radius-sm</code></td><td><code>7px</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-gap</code></td><td><code>0.3rem</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>CSS parts</h3>
+        <p class="section-sub">
+          Shadow DOM, so styling from outside goes through
+          <code>::part()</code>: <code>frame</code>, <code>thumb</code>, <code>overlay</code>,
+          <code>meta</code>, <code>frame-number</code>, <code>label</code>.
+        </p>
+        <pre><code>snapshot-nav-list::part(frame) {
+  border-radius: 2px; /* square corners, your call */
+}</code></pre>
+      </section>
+
+      <section id="frameworks" class="frameworks">
+        <p class="eyebrow">Frameworks</p>
+        <h2>One component, every framework.</h2>
+
+        <h3>Vanilla</h3>
+        <pre><code>import '@snapshot/core';
+
+const nav = document.createElement('snapshot-nav-list');
+nav.items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
+nav.addEventListener('nav-select', (e) => {
+  goTo(e.detail.id);
+});
+document.body.append(nav);</code></pre>
+
+        <h3>Angular</h3>
+        <pre><code>// wrap it once — see apps/demo-angular-widgets/src/app/snapshot-nav-list.component.ts
+@Component({
+  selector: 'app-root',
+  imports: [NgSnapshotNavListComponent],
+  template: `
+    &lt;app-snapshot-nav-list [items]="items" (select)="onSelect($event)" /&gt;
+  `,
+})
+export class AppComponent {
+  items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
+  onSelect(detail: { id: string }) { /* ... */ }
+}</code></pre>
+      </section>
+
+      <footer class="colophon">
+        <p>Contact sheet for your dashboards.</p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

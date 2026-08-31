@@ -1,0 +1,19 @@
+{
+  "name": "gallery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3200",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "navigo": "^8.11.1",
+    "sql.js": "^1.14.0"
+  },
+  "devDependencies": {
+    "@types/sql.js": "^1.4.9",
+    "vite": "^5.4.0",
+    "typescript": "^5.5.0"
+  }
+}
