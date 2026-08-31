@@ -24,6 +24,7 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 | Path | What it is |
 |---|---|
 | `packages/core` | `@snapshot/core` — the service, storage interface, and `<snapshot-nav-list>` component |
+| `packages/angular` | `@snapshot/angular` — thin Angular wrapper (`<ngx-snapshot-nav-list>`) around the same web component |
 | `apps/docs` | Marketing/docs site |
 | `apps/gallery` | Interactive demo gallery (list variants, sqlite-backed storage example, etc.) |
 | `apps/demo-angular-widgets` | Angular integration demo |
@@ -65,3 +66,11 @@ A default singleton, `snapshotService`, is exported for convenience; construct y
 ### `<snapshot-nav-list>`
 
 A Lit web component styled as a contact sheet of numbered frames. Point it at a `SnapshotService` instance and a list of nav items; fully themeable via CSS custom properties.
+
+### `@snapshot/angular`
+
+```ts
+import { SnapshotNavListComponent } from '@snapshot/angular';
+```
+
+A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>` — same inputs/outputs (`items`, `variant`, `overlayTint`, `overlayOpacity`, `overlayBlur`, `labelPosition`, `snapshotService`, `(select)`), Angular-idiomatic bindings instead of raw attributes/DOM events.

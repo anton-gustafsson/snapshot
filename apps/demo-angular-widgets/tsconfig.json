@@ -17,7 +17,8 @@
     "module": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@snapshot/core": ["../../packages/core/src/index.ts"]
+      "@snapshot/core": ["../../packages/core/src/index.ts"],
+      "@snapshot/angular": ["../../packages/angular/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

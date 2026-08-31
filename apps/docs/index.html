@@ -290,12 +290,14 @@ nav.addEventListener('nav-select', (e) => {
 document.body.append(nav);</code></pre>
 
         <h3>Angular</h3>
-        <pre><code>// wrap it once — see apps/demo-angular-widgets/src/app/snapshot-nav-list.component.ts
+        <pre><code>npm install @snapshot/angular</code></pre>
+        <pre><code>import { SnapshotNavListComponent } from '@snapshot/angular';
+
 @Component({
   selector: 'app-root',
-  imports: [NgSnapshotNavListComponent],
+  imports: [SnapshotNavListComponent],
   template: `
-    &lt;app-snapshot-nav-list [items]="items" (select)="onSelect($event)" /&gt;
+    &lt;ngx-snapshot-nav-list [items]="items" (select)="onSelect($event)" /&gt;
   `,
 })
 export class AppComponent {

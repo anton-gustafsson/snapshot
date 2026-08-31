@@ -28,7 +28,7 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
  * to both regardless of what the consumer does with the reference.
  */
 @Component({
-  selector: 'app-snapshot-nav-list',
+  selector: 'ngx-snapshot-nav-list',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `<snapshot-nav-list
     #el
@@ -41,7 +41,7 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
     (nav-select)="onNavSelect($event)"
   ></snapshot-nav-list>`,
 })
-export class NgSnapshotNavListComponent implements DoCheck {
+export class SnapshotNavListComponent implements DoCheck {
   @Input() items: NavItem[] = [];
   @Input() variant: SnapshotNavListVariant = 'icon-only';
   @Input() overlayTint: 'dark' | 'light' | 'none' = 'dark';

@@ -1,5 +1,5 @@
 import { Component, ElementRef, computed, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
-import { NgSnapshotNavListComponent } from './snapshot-nav-list.component';
+import { SnapshotNavListComponent } from '@snapshot/angular';
 import { snapshotService } from '@snapshot/core';
 import type { NavItem } from '@snapshot/core';
 import {
@@ -12,7 +12,7 @@ import {
 
 @Component({
   selector: 'app-root',
-  imports: [NgSnapshotNavListComponent, NgxDashboardComponent, WidgetListComponent],
+  imports: [SnapshotNavListComponent, NgxDashboardComponent, WidgetListComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
