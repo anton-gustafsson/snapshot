@@ -16,7 +16,7 @@
     "@angular/core": ">=17"
   },
   "dependencies": {
-    "@anton-gustafsson/snapshot-core": "*"
+    "@anton-gustafsson/snapshot-core": "^0.0.3"
   },
   "devDependencies": {
     "@angular/compiler": "^21.2.0",

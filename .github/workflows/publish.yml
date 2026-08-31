@@ -29,6 +29,8 @@ jobs:
         run: |
           npm version patch --no-git-tag-version -w packages/core
           npm version patch --no-git-tag-version -w packages/angular
+          CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
+          npm pkg set "dependencies.@anton-gustafsson/snapshot-core=^$CORE_VERSION" -w packages/angular
 
       - name: Build packages
         run: npm run build:packages
