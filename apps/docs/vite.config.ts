@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      'snapshot-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@anton-gustafsson/snapshot-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
     },
   },
 });

@@ -1,6 +1,6 @@
-import 'snapshot-core';
-import type { NavItem } from 'snapshot-core';
-import { snapshotService } from 'snapshot-core';
+import '@anton-gustafsson/snapshot-core';
+import type { NavItem } from '@anton-gustafsson/snapshot-core';
+import { snapshotService } from '@anton-gustafsson/snapshot-core';
 
 const items: NavItem[] = [
   { id: 'revenue', label: 'Revenue', icon: '💰' },

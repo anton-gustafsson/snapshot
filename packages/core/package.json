@@ -1,5 +1,5 @@
 {
-  "name": "snapshot-core",
+  "name": "@anton-gustafsson/snapshot-core",
   "version": "0.0.1",
   "description": "A pluggable snapshot service that turns any DOM element into a stored, shareable image, plus an optional <snapshot-nav-list> web component to display them.",
   "license": "MIT",

@@ -33,12 +33,12 @@ jobs:
       - name: Build packages
         run: npm run build:packages
 
-      - name: Publish snapshot-core
+      - name: Publish @anton-gustafsson/snapshot-core
         run: npm publish -w packages/core --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish snapshot-angular
+      - name: Publish @anton-gustafsson/snapshot-angular
         run: npm publish packages/angular/dist --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

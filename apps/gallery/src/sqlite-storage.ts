@@ -1,7 +1,7 @@
 import initSqlJs, { type Database } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { get, set } from 'idb-keyval';
-import type { SnapshotStorage } from 'snapshot-core';
+import type { SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 
 const DB_CACHE_KEY = 'gallery:sqlite-db';
 

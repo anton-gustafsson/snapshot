@@ -5,7 +5,7 @@
 A pluggable snapshot service that turns any DOM element into a stored, shareable image — with an optional `<snapshot-nav-list>` web component to display them.
 
 ```ts
-import { snapshotService } from 'snapshot-core';
+import { snapshotService } from '@anton-gustafsson/snapshot-core';
 
 await snapshotService.capture(el, 'my-view');   // store a thumbnail
 const url = await snapshotService.get('my-view'); // read it back
@@ -23,15 +23,15 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 
 | Path | What it is |
 |---|---|
-| `packages/core` | `snapshot-core` — the service, storage interface, and `<snapshot-nav-list>` component |
-| `packages/angular` | `snapshot-angular` — thin Angular wrapper (`<ngx-snapshot-nav-list>`) around the same web component |
+| `packages/core` | `@anton-gustafsson/snapshot-core` — the service, storage interface, and `<snapshot-nav-list>` component |
+| `packages/angular` | `@anton-gustafsson/snapshot-angular` — thin Angular wrapper (`<ngx-snapshot-nav-list>`) around the same web component |
 | `apps/docs` | Marketing/docs site |
 | `apps/gallery` | Interactive demo gallery (list variants, sqlite-backed storage example, etc.) |
 | `apps/demo-angular-widgets` | Angular integration demo |
 
 ## Publishing
 
-`.github/workflows/publish.yml` patch-bumps and publishes `snapshot-core` and `snapshot-angular` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
+`.github/workflows/publish.yml` patch-bumps and publishes `@anton-gustafsson/snapshot-core` and `@anton-gustafsson/snapshot-angular` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
 
 ## Deploy
 
@@ -71,10 +71,10 @@ A default singleton, `snapshotService`, is exported for convenience; construct y
 
 A Lit web component styled as a contact sheet of numbered frames. Point it at a `SnapshotService` instance and a list of nav items; fully themeable via CSS custom properties.
 
-### `snapshot-angular`
+### `@anton-gustafsson/snapshot-angular`
 
 ```ts
-import { SnapshotNavListComponent } from 'snapshot-angular';
+import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
 ```
 
 A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>` — same inputs/outputs (`items`, `variant`, `overlayTint`, `overlayOpacity`, `overlayBlur`, `labelPosition`, `snapshotService`, `(select)`), Angular-idiomatic bindings instead of raw attributes/DOM events.

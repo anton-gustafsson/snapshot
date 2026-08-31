@@ -1,4 +1,4 @@
-import { SnapshotService } from 'snapshot-core';
+import { SnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, DelayedProceduralStorage, makeClickableNavList, pageHeader, toClickableItems } from '../gallery-shared';
 
 export const path = '/loading';

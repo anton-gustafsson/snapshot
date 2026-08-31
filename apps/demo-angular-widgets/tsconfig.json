@@ -17,8 +17,8 @@
     "module": "preserve",
     "baseUrl": ".",
     "paths": {
-      "snapshot-core": ["../../packages/core/src/index.ts"],
-      "snapshot-angular": ["../../packages/angular/src/index.ts"]
+      "@anton-gustafsson/snapshot-core": ["../../packages/core/src/index.ts"],
+      "@anton-gustafsson/snapshot-angular": ["../../packages/angular/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

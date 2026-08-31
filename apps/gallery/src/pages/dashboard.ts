@@ -1,4 +1,4 @@
-import { snapshotService } from 'snapshot-core';
+import { snapshotService } from '@anton-gustafsson/snapshot-core';
 import { router } from '../router';
 import { DASHBOARDS } from '../gallery-shared';
 import { captureTargets } from '../gallery-registry';
