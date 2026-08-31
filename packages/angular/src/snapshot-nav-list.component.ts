@@ -36,7 +36,8 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
     [snapshotService]="snapshotService"
     [attr.variant]="variant"
     [attr.overlay-tint]="overlayTint"
-    [attr.overlay-opacity]="overlayOpacity"
+    [attr.text-overlay-opacity]="textOverlayOpacity"
+    [attr.image-overlay-opacity]="imageOverlayOpacity"
     [attr.overlay-blur]="overlayBlur"
     [attr.label-position]="labelPosition"
     [attr.editable]="editable ? '' : null"
@@ -48,7 +49,8 @@ export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
   @Input() items: NavItem[] = [];
   @Input() variant: SnapshotNavListVariant = 'icon-only';
   @Input() overlayTint: 'dark' | 'light' | 'none' = 'none';
-  @Input() overlayOpacity = 0.35;
+  @Input() textOverlayOpacity = 0.35;
+  @Input() imageOverlayOpacity = 0;
   @Input() overlayBlur = 0;
   /** 'bottom' is the caption strip (default); 'center' centers a larger title (icon-only variant only). */
   @Input() labelPosition: 'bottom' | 'center' = 'bottom';

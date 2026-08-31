@@ -77,4 +77,4 @@ A Lit web component styled as a contact sheet of numbered frames. Point it at a 
 import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
 ```
 
-A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>` — same inputs/outputs (`items`, `variant`, `overlayTint`, `overlayOpacity`, `overlayBlur`, `labelPosition`, `snapshotService`, `(select)`), Angular-idiomatic bindings instead of raw attributes/DOM events.
+A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>` — same inputs/outputs (`items`, `variant`, `overlayTint`, `textOverlayOpacity`, `imageOverlayOpacity`, `overlayBlur`, `labelPosition`, `snapshotService`, `(select)`), Angular-idiomatic bindings instead of raw attributes/DOM events.

@@ -18,6 +18,7 @@ export const pages: GalleryPage[] = [
   { path: '/list-variant', label: 'List variant', load: () => import('./list-variant') },
   { path: '/text-combos', label: 'Text & edit', load: () => import('./text-combos') },
   { path: '/elevation', label: 'Elevation', load: () => import('./elevation') },
+  { path: '/dashboard-card', label: 'Dashboard preview card', load: () => import('./dashboard-card') },
   { path: '/sqlite', label: 'SQLite + IndexedDB preload', load: () => import('./sqlite') },
   { path: '/sqlite-only', label: 'SQLite only', load: () => import('./sqlite-only') },
 ];

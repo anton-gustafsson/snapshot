@@ -384,3 +384,9 @@ snapshot-nav-list {
   font-size: 1.5rem;
   font-weight: 700;
 }
+
+.dash-card-note {
+  margin: 0 0 1.5rem;
+  font-size: 0.8rem;
+  color: #a6a9b3;
+}

@@ -69,7 +69,7 @@ export function render(container: HTMLElement) {
   demo.append(h3Overlay);
   const overlayP = document.createElement('p');
   overlayP.innerHTML =
-    "Same idea applied to <code>&lt;snapshot-nav-list&gt;</code>'s existing <code>overlay-tint</code>/<code>overlay-opacity</code>, plus " +
+    "Same idea applied to <code>&lt;snapshot-nav-list&gt;</code>'s existing <code>overlay-tint</code>/<code>text-overlay-opacity</code>, plus " +
     '<code>--snapshot-nav-list-overlay-margin</code>/<code>--snapshot-nav-list-overlay-radius</code> (both set to <code>6px</code>/<code>8px</code> here) floating the caption into a rounded chip instead of a flush strip.';
   demo.append(overlayP);
 
@@ -96,7 +96,7 @@ export function render(container: HTMLElement) {
     const navList = makeNavList([DASHBOARDS[0]], {
       variant: 'icon-only',
       'overlay-tint': step.tint,
-      'overlay-opacity': String(step.opacity),
+      'text-overlay-opacity': String(step.opacity),
       'overlay-blur': String(step.blur),
     });
     navList.style.setProperty('--snapshot-nav-list-overlay-margin', '6px');

@@ -11,10 +11,11 @@ export const label = 'Config builder';
 
 interface Config {
   showDescription: boolean;
-  variant: 'list' | 'icon-only';
+  variant: 'list' | 'icon-only' | 'card';
   labelPosition: 'bottom' | 'center';
   overlayTint: 'dark' | 'light' | 'none';
-  overlayOpacity: number;
+  textOverlayOpacity: number;
+  imageOverlayOpacity: number;
   overlayBlur: number;
   editable: boolean;
   accent: string;
@@ -32,7 +33,8 @@ const DEFAULTS: Config = {
   variant: 'icon-only',
   labelPosition: 'bottom',
   overlayTint: 'none',
-  overlayOpacity: 0.35,
+  textOverlayOpacity: 0.35,
+  imageOverlayOpacity: 0,
   overlayBlur: 0,
   editable: false,
   accent: '#ff5a1f',
@@ -49,7 +51,8 @@ function applyConfig(nav: HTMLElement, c: Config) {
   nav.setAttribute('variant', c.variant);
   nav.setAttribute('label-position', c.labelPosition);
   nav.setAttribute('overlay-tint', c.overlayTint);
-  nav.setAttribute('overlay-opacity', String(c.overlayOpacity));
+  nav.setAttribute('text-overlay-opacity', String(c.textOverlayOpacity));
+  nav.setAttribute('image-overlay-opacity', String(c.imageOverlayOpacity));
   nav.setAttribute('overlay-blur', String(c.overlayBlur));
   nav.toggleAttribute('editable', c.editable);
   nav.style.setProperty('--snapshot-nav-list-accent', c.accent);
@@ -67,7 +70,8 @@ function snippet(c: Config): string {
     `variant="${c.variant}"`,
     `label-position="${c.labelPosition}"`,
     `overlay-tint="${c.overlayTint}"`,
-    `overlay-opacity="${c.overlayOpacity}"`,
+    `text-overlay-opacity="${c.textOverlayOpacity}"`,
+    `image-overlay-opacity="${c.imageOverlayOpacity}"`,
     `overlay-blur="${c.overlayBlur}"`,
     ...(c.editable ? ['editable'] : []),
   ].join('\n  ');
@@ -306,12 +310,13 @@ export function render(container: HTMLElement) {
 
   checkbox(contentGrid, 'showDescription', 'Description');
 
-  select(layoutGrid, 'variant', 'Variant', ['icon-only', 'list']);
+  select(layoutGrid, 'variant', 'Variant', ['icon-only', 'list', 'card']);
   select(layoutGrid, 'labelPosition', 'Label position (icon-only)', ['bottom', 'center']);
   checkbox(layoutGrid, 'editable', 'Editable');
 
   select(overlayGrid, 'overlayTint', 'Overlay tint', ['none', 'dark', 'light']);
-  range(overlayGrid, 'overlayOpacity', 'Overlay opacity', 0, 1, 0.05);
+  range(overlayGrid, 'textOverlayOpacity', 'Text overlay opacity', 0, 1, 0.05);
+  range(overlayGrid, 'imageOverlayOpacity', 'Image overlay opacity', 0, 1, 0.05);
   range(overlayGrid, 'overlayBlur', 'Overlay blur', 0, 20, 1, 'px');
   range(overlayGrid, 'overlayMargin', 'Overlay margin (icon-only)', 0, 20, 1, 'px');
   range(overlayGrid, 'overlayRadius', 'Overlay radius (icon-only)', 0, 20, 1, 'px');

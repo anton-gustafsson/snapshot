@@ -232,10 +232,11 @@ snapshotService = new SnapshotService({ storage });</code></pre>
           </thead>
           <tbody>
             <tr><td><code>items</code></td><td><code>NavItem[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute.</td></tr>
-            <tr><td><code>variant</code></td><td><code>'list' | 'icon-only'</code></td><td><code>'icon-only'</code></td><td>Row-with-label vs. a grid of tiles with the title on top.</td></tr>
-            <tr><td><code>overlay-tint</code></td><td><code>'dark' | 'light' | 'none'</code></td><td><code>'dark'</code></td><td>Scrim behind the image so overlaid text stays legible.</td></tr>
-            <tr><td><code>overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0.35</code></td><td>Scrim strength.</td></tr>
-            <tr><td><code>overlay-blur</code></td><td><code>number</code> (px)</td><td><code>0</code></td><td>Backdrop blur applied to the image only.</td></tr>
+            <tr><td><code>variant</code></td><td><code>'list' | 'icon-only' | 'card'</code></td><td><code>'icon-only'</code></td><td>Row-with-label; grid of tiles with the title overlaid on top; or a grid of cards with a contained (never-cropped) preview and the title/description below it.</td></tr>
+            <tr><td><code>overlay-tint</code></td><td><code>'dark' | 'light' | 'none'</code></td><td><code>'none'</code></td><td>Tint color used by both scrims below.</td></tr>
+            <tr><td><code>text-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0.35</code></td><td>Caption background tint strength, so overlaid text stays legible.</td></tr>
+            <tr><td><code>image-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0</code></td><td>Image scrim tint strength. Defaults to 0 so the image stays clear.</td></tr>
+            <tr><td><code>overlay-blur</code></td><td><code>number</code> (px)</td><td><code>0</code></td><td>Backdrop blur applied to both the image and the caption background.</td></tr>
           </tbody>
         </table>
 

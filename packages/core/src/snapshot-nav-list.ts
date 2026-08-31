@@ -18,7 +18,7 @@ function isMarkupIcon(icon: string): boolean {
   return icon.trimStart().startsWith('<');
 }
 
-export type SnapshotNavListVariant = 'list' | 'icon-only';
+export type SnapshotNavListVariant = 'list' | 'icon-only' | 'card';
 
 /**
  * Visual identity: a contact sheet. Every tile is a "frame" — numbered like a strip
@@ -158,7 +158,7 @@ export class SnapshotNavList extends LitElement {
       }
     }
 
-    /* tint/blur controls apply only to the image, via this scrim layered on top of it */
+    /* independent from .meta's tint — image-overlay-opacity defaults to 0 so the image stays clear (blur only) */
     .image-overlay {
       position: absolute;
       inset: 0;
@@ -285,6 +285,72 @@ export class SnapshotNavList extends LitElement {
       font-weight: 600;
       text-align: center;
     }
+
+    /* card: a contained (never cropped) preview above real body text below it —
+       text never sits on top of the image, so unlike icon-only it needs no
+       overlay tint to stay legible. Modeled on a typical "preview card"
+       pattern: framed shot, title + description underneath, shadow on hover. */
+    :host([variant='card']) ul {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--snapshot-nav-list-card-min-width, 220px), 1fr));
+      gap: var(--snapshot-nav-list-card-gap, 1.25rem);
+    }
+    :host([variant='card']) li {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--snapshot-nav-list-card-padding, 0.5rem);
+      background: var(--snapshot-nav-list-card-bg, transparent);
+      border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+      box-shadow: none;
+      transition:
+        box-shadow var(--snapshot-nav-list-card-transition-dur, 0.15s) ease,
+        border-color var(--snapshot-nav-list-card-transition-dur, 0.15s) ease;
+    }
+    :host([variant='card']) li:hover,
+    :host([variant='card']) li:focus-visible {
+      background: var(--snapshot-nav-list-card-bg, transparent);
+      box-shadow: var(--snapshot-nav-list-card-shadow, 0 2px 8px color-mix(in srgb, currentColor 18%, transparent));
+      border-color: color-mix(in srgb, currentColor 22%, transparent);
+    }
+    :host([variant='card']) li:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--frame-accent) 55%, transparent);
+    }
+    :host([variant='card']) li:focus-visible .thumb-wrap {
+      outline: none;
+    }
+    :host([variant='card']) .thumb-wrap {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 2 / 1;
+      border-radius: var(--snapshot-nav-list-radius-sm, 7px);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
+      background: color-mix(in srgb, currentColor 4%, transparent);
+      display: grid;
+      place-items: center;
+    }
+    :host([variant='card']) .thumb-wrap::before,
+    :host([variant='card']) .thumb-wrap::after {
+      display: none;
+    }
+    :host([variant='card']) img.thumb {
+      /* contain, not cover — the whole dashboard stays readable, nothing cropped */
+      object-fit: contain;
+    }
+    :host([variant='card']) .meta {
+      padding: 0.75rem 0.5rem 0.5rem;
+      gap: 0.25rem;
+    }
+    :host([variant='card']) .label {
+      white-space: normal;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    :host([variant='card']) .description {
+      white-space: normal;
+      font-size: 0.8125rem;
+    }
   `;
 
   @property({ type: Array }) items: NavItem[] = [];
@@ -292,8 +358,10 @@ export class SnapshotNavList extends LitElement {
 
   /** icon-only tile overlay: tint behind the title so it stays legible over any image. Transparent by default — opt into a scrim explicitly. */
   @property({ attribute: 'overlay-tint' }) overlayTint: 'dark' | 'light' | 'none' = 'none';
-  /** overlay tint strength, 0-1 */
-  @property({ type: Number, attribute: 'overlay-opacity' }) overlayOpacity = 0.35;
+  /** caption background tint strength, 0-1 */
+  @property({ type: Number, attribute: 'text-overlay-opacity' }) textOverlayOpacity = 0.35;
+  /** image scrim tint strength, 0-1 — 0 keeps the image clear (blur only) */
+  @property({ type: Number, attribute: 'image-overlay-opacity' }) imageOverlayOpacity = 0;
   /** backdrop blur behind the title, in px */
   @property({ type: Number, attribute: 'overlay-blur' }) overlayBlur = 0;
   /** icon-only only: 'bottom' is the caption strip (default), 'center' centers a larger title. */
@@ -380,13 +448,25 @@ export class SnapshotNavList extends LitElement {
     }
   }
 
-  private get overlayStyle() {
+  /** image scrim: blur + its own (usually 0) tint strength — independent of the caption's. */
+  private get imageOverlayStyle() {
+    const blur = `${this.overlayBlur}px`;
+    if (this.overlayTint === 'none' || this.imageOverlayOpacity === 0) {
+      return { '--overlay-blur': blur };
+    }
+    const tintColor = this.overlayTint === 'light' ? '#fff' : '#000';
+    const bg = `color-mix(in srgb, ${tintColor} ${Math.round(this.imageOverlayOpacity * 100)}%, transparent)`;
+    return { '--overlay-bg': bg, '--overlay-blur': blur };
+  }
+
+  /** caption background: tint (to pop the text) + the same blur. */
+  private get metaStyle() {
     const blur = `${this.overlayBlur}px`;
     if (this.overlayTint === 'none') {
       return { '--overlay-bg': 'transparent', '--overlay-text': 'inherit', '--overlay-blur': blur };
     }
     const tintColor = this.overlayTint === 'light' ? '#fff' : '#000';
-    const bg = `color-mix(in srgb, ${tintColor} ${Math.round(this.overlayOpacity * 100)}%, transparent)`;
+    const bg = `color-mix(in srgb, ${tintColor} ${Math.round(this.textOverlayOpacity * 100)}%, transparent)`;
     const text = this.overlayTint === 'light' ? '#111' : '#fff';
     return { '--overlay-bg': bg, '--overlay-text': text, '--overlay-blur': blur };
   }
@@ -413,7 +493,8 @@ export class SnapshotNavList extends LitElement {
   }
 
   override render() {
-    const overlayStyle = this.overlayStyle;
+    const imageOverlayStyle = this.imageOverlayStyle;
+    const metaStyle = this.metaStyle;
     return html`
       <ul role="listbox">
         ${this.items.map(
@@ -437,7 +518,7 @@ export class SnapshotNavList extends LitElement {
                           >${item.icon ? (isMarkupIcon(item.icon) ? unsafeHTML(item.icon) : item.icon) : ''}</span
                         >
                       </div>`}
-                <div class="image-overlay" part="overlay" style=${styleMap(overlayStyle)}></div>
+                <div class="image-overlay" part="overlay" style=${styleMap(imageOverlayStyle)}></div>
                 ${this.editable
                   ? html`<button
                       type="button"
@@ -450,7 +531,7 @@ export class SnapshotNavList extends LitElement {
                     </button>`
                   : ''}
               </div>
-              <div class="meta" part="meta" style=${styleMap(overlayStyle)}>
+              <div class="meta" part="meta" style=${styleMap(metaStyle)}>
                 <span class="label" part="label">${item.label}</span>
                 ${item.description ? html`<span class="description" part="description">${item.description}</span>` : ''}
               </div>
