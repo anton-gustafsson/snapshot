@@ -119,6 +119,66 @@ main {
   accent-color: #ff5a1f;
 }
 
+/* Scoped to the elevation example page only — not a repo-wide token set. */
+.elevation-demo {
+  --shadow-1: 0 1px 2px color-mix(in srgb, currentColor 6%, transparent);
+  --shadow-2: 0 2px 8px color-mix(in srgb, currentColor 10%, transparent);
+  --shadow-3: 0 8px 24px color-mix(in srgb, currentColor 14%, transparent);
+  --shadow-overlay: 0 16px 48px color-mix(in srgb, currentColor 22%, transparent);
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, #ff5a1f 55%, transparent);
+}
+
+.elevation-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.elevation-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.elevation-swatch {
+  width: 140px;
+  height: 84px;
+  border-radius: 10px;
+  background: #14161c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.7rem;
+  color: #a6a9b3;
+}
+
+.elevation-swatch.is-interactive {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.elevation-swatch.is-interactive:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.elevation-focus-btn {
+  width: 140px;
+  height: 84px;
+  border-radius: 10px;
+  background: #14161c;
+  border: none;
+  color: #a6a9b3;
+  font: inherit;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.elevation-focus-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 button {
   font: inherit;
   background: rgba(255, 90, 31, 0.15);
