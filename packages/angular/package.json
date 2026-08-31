@@ -1,6 +1,6 @@
 {
   "name": "@anton-gustafsson/snapshot-angular",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Thin Angular wrapper around <snapshot-nav-list> from @anton-gustafsson/snapshot-core.",
   "license": "MIT",
   "repository": {
