@@ -1,3 +1,3 @@
 import Navigo from 'navigo';
 
-export const router = new Navigo('/');
+export const router = new Navigo(import.meta.env.BASE_URL);

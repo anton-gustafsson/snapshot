@@ -1,0 +1,6 @@
+[build]
+  command = "npm install && npm run build -w apps/docs && npm run build -w apps/gallery && mkdir -p apps/docs/dist/examples && cp -r apps/gallery/dist/. apps/docs/dist/examples/"
+  publish = "apps/docs/dist"
+
+[build.environment]
+  NODE_VERSION = "20"

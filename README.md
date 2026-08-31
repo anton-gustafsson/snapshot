@@ -26,6 +26,10 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 | `apps/gallery` | Interactive demo gallery (list variants, sqlite-backed storage example, etc.) |
 | `apps/demo-angular-widgets` | Angular integration demo |
 
+## Deploy
+
+`netlify.toml` builds `apps/docs` and `apps/gallery` together and publishes them as one site — docs at `/`, the gallery at `/examples/`. Connect the repo in Netlify and it picks this up automatically.
+
 ## Getting started
 
 ```bash
