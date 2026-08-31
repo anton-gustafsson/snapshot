@@ -1,7 +1,7 @@
 {
-  "name": "@anton-gustafsson/snapshot-angular",
+  "name": "snapshot-angular",
   "version": "0.0.1",
-  "description": "Thin Angular wrapper around <snapshot-nav-list> from @anton-gustafsson/snapshot-core.",
+  "description": "Thin Angular wrapper around <snapshot-nav-list> from snapshot-core.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -16,7 +16,7 @@
     "@angular/core": ">=17"
   },
   "dependencies": {
-    "@anton-gustafsson/snapshot-core": "*"
+    "snapshot-core": "*"
   },
   "devDependencies": {
     "@angular/compiler": "^21.2.0",

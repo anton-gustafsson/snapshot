@@ -11,8 +11,8 @@
   "private": true,
   "packageManager": "npm@11.11.0",
   "dependencies": {
-    "@anton-gustafsson/snapshot-angular": "*",
-    "@anton-gustafsson/snapshot-core": "*",
+    "snapshot-angular": "*",
+    "snapshot-core": "*",
     "@angular/animations": "^21.2.0",
     "@angular/cdk": "^21.2.14",
     "@angular/common": "^21.2.0",

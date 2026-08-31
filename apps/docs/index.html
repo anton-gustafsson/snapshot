@@ -38,7 +38,7 @@
           <code>&lt;snapshot-nav-list&gt;</code> is one thing you can point it at — not a requirement.
           Use the service on its own and render the result anywhere.
         </p>
-        <pre class="install"><code>npm install @anton-gustafsson/snapshot-core</code></pre>
+        <pre class="install"><code>npm install snapshot-core</code></pre>
       </header>
 
       <section class="steps" aria-label="How it works">
@@ -68,7 +68,7 @@
           This is the whole surface area. No component to mount, no framework to adopt —
           just a function that captures an element and a function that reads it back.
         </p>
-        <pre><code>import { snapshotService } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { snapshotService } from 'snapshot-core';
 
 // capture anything — a report panel, a canvas, a form preview
 const panel = document.querySelector('#quarterly-report');
@@ -92,7 +92,7 @@ snapshotService.subscribe((id, url) => updateThumbnail(id, url));</code></pre>
             <tr><td><code>keyPrefix</code></td><td><code>string</code></td><td><code>''</code></td><td>Prepended to every id in storage and in the cross-tab broadcast channel name — namespaces multiple services (or multiple apps) sharing one backend so their keys can't collide.</td></tr>
           </tbody>
         </table>
-        <pre><code>import { SnapshotService } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService } from 'snapshot-core';
 
 // two independent namespaces, same IndexedDB, no collisions
 export const salesSnapshots = new SnapshotService({ keyPrefix: 'sales:' });
@@ -103,7 +103,7 @@ export const supportSnapshots = new SnapshotService({ keyPrefix: 'support:' });<
           Ship it as-is for a single-device tool, or point it at your own backend so thumbnails
           follow the user across machines.
         </p>
-        <pre><code>import { SnapshotService, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService, type SnapshotStorage } from 'snapshot-core';
 
 class ApiSnapshotStorage implements SnapshotStorage {
   async save(id: string, blob: Blob) {
@@ -131,7 +131,7 @@ export const snapshotService = new SnapshotService({
 
         <h4>IndexedDB only (the default)</h4>
         <p class="section-sub">No <code>storage</code> option needed — this is what you get for free.</p>
-        <pre><code>import { SnapshotService } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService } from 'snapshot-core';
 
 export const snapshotService = new SnapshotService();
 // same as: new SnapshotService({ storage: new IndexedDbSnapshotStorage() })</code></pre>
@@ -141,7 +141,7 @@ export const snapshotService = new SnapshotService();
           Point <code>storage</code> straight at it. Every <code>get()</code> is a real query —
           no client-side cache in front of it, so a slow backend means a slow (but honest) spinner.
         </p>
-        <pre><code>import { SnapshotService, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService, type SnapshotStorage } from 'snapshot-core';
 
 class SqlSnapshotStorage implements SnapshotStorage {
   async save(id: string, blob: Blob) { /* INSERT/UPSERT, return a displayable URL */ }
@@ -165,7 +165,7 @@ export const snapshotService = new SnapshotService({
           in the background, then swap the tile to the fresh image live — no remount — via
           <code>SnapshotService.publish()</code>.
         </p>
-        <pre><code>import { SnapshotService, IndexedDbSnapshotStorage, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService, IndexedDbSnapshotStorage, type SnapshotStorage } from 'snapshot-core';
 
 class TieredSnapshotStorage implements SnapshotStorage {
   constructor(
@@ -280,7 +280,7 @@ snapshotService = new SnapshotService({ storage });</code></pre>
         <h2>One component, every framework.</h2>
 
         <h3>Vanilla</h3>
-        <pre><code>import '@anton-gustafsson/snapshot-core';
+        <pre><code>import 'snapshot-core';
 
 const nav = document.createElement('snapshot-nav-list');
 nav.items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
@@ -290,8 +290,8 @@ nav.addEventListener('nav-select', (e) => {
 document.body.append(nav);</code></pre>
 
         <h3>Angular</h3>
-        <pre><code>npm install @anton-gustafsson/snapshot-angular</code></pre>
-        <pre><code>import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
+        <pre><code>npm install snapshot-angular</code></pre>
+        <pre><code>import { SnapshotNavListComponent } from 'snapshot-angular';
 
 @Component({
   selector: 'app-root',

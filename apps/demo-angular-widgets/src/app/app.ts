@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
-import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
-import type { NavItem } from '@anton-gustafsson/snapshot-core';
+import { SnapshotNavListComponent } from 'snapshot-angular';
+import { snapshotService } from 'snapshot-core';
+import type { NavItem } from 'snapshot-core';
 import {
   DashboardComponent as NgxDashboardComponent,
   WidgetListComponent,

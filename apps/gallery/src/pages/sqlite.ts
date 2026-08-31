@@ -1,4 +1,4 @@
-import { SnapshotService, IndexedDbSnapshotStorage } from '@anton-gustafsson/snapshot-core';
+import { SnapshotService, IndexedDbSnapshotStorage } from 'snapshot-core';
 import { clear as clearIdb } from 'idb-keyval';
 import { DASHBOARDS, makeNavList, pageHeader, proceduralBlob, toClickableItems } from '../gallery-shared';
 import { registerCaptureTarget } from '../gallery-registry';

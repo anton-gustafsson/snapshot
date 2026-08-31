@@ -9,7 +9,7 @@ export default defineConfig({
   base: process.env.NETLIFY ? '/examples/' : '/',
   resolve: {
     alias: {
-      '@anton-gustafsson/snapshot-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+      'snapshot-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
     },
   },
 });
