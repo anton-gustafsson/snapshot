@@ -1,5 +1,7 @@
 # snapshot
 
+**[Docs & examples →](https://snapshot.moimob.com/)**
+
 A pluggable snapshot service that turns any DOM element into a stored, shareable image — with an optional `<snapshot-nav-list>` web component to display them.
 
 ```ts
@@ -28,7 +30,7 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 
 ## Deploy
 
-`netlify.toml` builds `apps/docs` and `apps/gallery` together and publishes them as one site — docs at `/`, the gallery at `/examples/`. Connect the repo in Netlify and it picks this up automatically.
+Live at [snapshot.moimob.com](https://snapshot.moimob.com/) — `netlify.toml` builds `apps/docs` and `apps/gallery` together and publishes them as one site, docs at `/` and the gallery at `/examples/`.
 
 ## Getting started
 
