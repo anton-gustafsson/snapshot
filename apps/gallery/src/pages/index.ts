@@ -12,6 +12,7 @@ export const pages: GalleryPage[] = [
   { path: '/big-tiles', label: 'Big tiles', load: () => import('./big-tiles') },
   { path: '/center-title', label: 'Center title', load: () => import('./center-title') },
   { path: '/overlay', label: 'Overlay tint', load: () => import('./overlay') },
+  { path: '/config-builder', label: 'Config builder', load: () => import('./config-builder') },
   { path: '/theming', label: 'Theming', load: () => import('./theming') },
   { path: '/loading', label: 'Loading state', load: () => import('./loading') },
   { path: '/list-variant', label: 'List variant', load: () => import('./list-variant') },

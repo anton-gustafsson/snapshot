@@ -4,3 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Gallery is a client-side-routed SPA (Navigo) mounted under /examples/ —
+# deep links and refreshes need to fall back to its index.html.
+[[redirects]]
+  from = "/examples/*"
+  to = "/examples/index.html"
+  status = 200

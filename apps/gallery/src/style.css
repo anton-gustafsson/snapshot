@@ -119,6 +119,144 @@ main {
   accent-color: #ff5a1f;
 }
 
+.config-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.25rem 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.config-group legend {
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ff5a1f;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.config-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #a6a9b3;
+}
+
+.config-grid select,
+.config-grid input[type='range'],
+.config-grid input[type='color'] {
+  accent-color: #ff5a1f;
+}
+
+.config-randomize {
+  display: block;
+  margin: 0 0 1.5rem;
+  background: rgba(255, 90, 31, 0.12);
+  color: #ff5a1f;
+  border: 1px solid rgba(255, 90, 31, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.config-randomize:hover {
+  background: rgba(255, 90, 31, 0.2);
+}
+
+.config-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  align-self: end;
+}
+
+.config-value {
+  color: #e8e9ec;
+  font-weight: 500;
+}
+
+.config-preview-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.config-preview-panel {
+  flex: 1 1 300px;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.config-preview-caption {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+
+.config-preview-light {
+  background: #f4f4f6;
+  color: #16171b;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.config-preview-dark {
+  background: #14151a;
+  color: #e8e9ec;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.config-snippet-wrap {
+  position: relative;
+}
+
+.config-snippet {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.config-snippet code {
+  background: none;
+  padding: 0;
+  white-space: pre;
+}
+
+.config-copy {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8e9ec;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.config-share {
+  right: 4.6rem;
+}
+
+.config-copy:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 /* Scoped to the elevation example page only — not a repo-wide token set. */
 .elevation-demo {
   --shadow-1: 0 1px 2px color-mix(in srgb, currentColor 6%, transparent);
