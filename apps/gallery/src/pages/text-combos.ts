@@ -1,4 +1,4 @@
-import { DASHBOARDS, makeNavList, pageHeader, type GalleryItem } from '../gallery-shared';
+import { DASHBOARDS, captionedRow, makeNavList, pageHeader, type GalleryItem } from '../gallery-shared';
 import type { NavItem } from '@anton-gustafsson/snapshot-core';
 
 export const path = '/text-combos';
@@ -59,21 +59,17 @@ export function render(container: HTMLElement) {
       'Editing fires <code>nav-edit</code> instead of <code>nav-select</code>; nothing here listens for it beyond a console log.',
   );
 
-  const row = document.createElement('div');
-  row.className = 'overlay-row';
-  for (const combo of COMBOS) {
-    const wrap = document.createElement('div');
-    wrap.className = 'overlay-cell';
-    const caption = document.createElement('p');
-    caption.className = 'overlay-caption';
-    caption.textContent = combo.caption;
-    const el = makeNavList(combo.items, combo.attrs);
-    // The event carries the whole item now, `data` included.
-    el.addEventListener('nav-edit', ((e: CustomEvent<NavItem>) => {
-      console.log(`nav-edit: ${e.detail.id}`, e.detail);
-    }) as EventListener);
-    wrap.append(caption, el);
-    row.append(wrap);
-  }
-  container.append(row);
+  captionedRow(
+    container,
+    COMBOS,
+    (combo) => combo.caption,
+    (combo) => {
+      const el = makeNavList(combo.items, combo.attrs);
+      // The event carries the whole item now, `data` included.
+      el.addEventListener('nav-edit', ((e: CustomEvent<NavItem>) => {
+        console.log(`nav-edit: ${e.detail.id}`, e.detail);
+      }) as EventListener);
+      return el;
+    },
+  );
 }

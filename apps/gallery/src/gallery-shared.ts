@@ -1,6 +1,6 @@
 import '@anton-gustafsson/snapshot-core';
 import { SnapshotService, IndexedDbSnapshotStorage } from '@anton-gustafsson/snapshot-core';
-import type { NavItem, SnapshotKey, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+import type { NavItem, SnapshotKey, SnapshotNavList, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 import { router } from './router';
 import { registerCaptureTarget } from './gallery-registry';
 
@@ -336,4 +336,112 @@ export function pageHeader(container: HTMLElement, title: string, descriptionHtm
   const p = document.createElement('p');
   p.innerHTML = descriptionHtml;
   container.append(h2, p);
+}
+
+/** An <h3> sub-heading plus an optional <p> (HTML allowed) under it — pageHeader's h2/p pairing, one size down, for a section within a page. */
+export function sectionTitle(container: HTMLElement, title: string, html?: string) {
+  const h3 = document.createElement('h3');
+  h3.textContent = title;
+  container.append(h3);
+  if (html !== undefined) {
+    const p = document.createElement('p');
+    p.innerHTML = html;
+    container.append(p);
+  }
+}
+
+/** A row of captioned cells — `.overlay-row` > `.overlay-cell` > caption + whatever `build` returns. The shape every page that lines up small labeled variants side by side needs. */
+export function captionedRow<T>(
+  container: HTMLElement,
+  entries: readonly T[],
+  caption: (entry: T) => string,
+  build: (entry: T) => HTMLElement,
+) {
+  const row = document.createElement('div');
+  row.className = 'overlay-row';
+  for (const entry of entries) {
+    const cell = document.createElement('div');
+    cell.className = 'overlay-cell';
+    const p = document.createElement('p');
+    p.className = 'overlay-caption';
+    p.textContent = caption(entry);
+    cell.append(p, build(entry));
+    row.append(cell);
+  }
+  container.append(row);
+}
+
+/**
+ * Side-by-side "Light"/"Dark" preview panels — `.config-preview-row` > two
+ * captioned `.config-preview-panel`s, each holding its own nav-list. Returns
+ * the two nav-list elements (light, dark) so a caller can keep configuring
+ * them (attrs, items) after creation.
+ */
+export function lightDarkPreview<T>(
+  container: HTMLElement,
+  items: NavItem<T>[],
+  attrs: Record<string, string>,
+  service: SnapshotService,
+): [SnapshotNavList, SnapshotNavList] {
+  const row = document.createElement('div');
+  row.className = 'config-preview-row';
+  const navs = (['Light', 'Dark'] as const).map((name) => {
+    const panel = document.createElement('div');
+    panel.className = `config-preview-panel config-preview-${name.toLowerCase()}`;
+    const caption = document.createElement('p');
+    caption.className = 'config-preview-caption';
+    caption.textContent = name;
+    const nav = makeNavList(items, attrs, service);
+    panel.append(caption, nav);
+    row.append(panel);
+    return nav;
+  });
+  container.append(row);
+  return navs as [SnapshotNavList, SnapshotNavList];
+}
+
+/** A `<pre class="config-snippet"><code>` block — returns the `<code>` element so a caller can set/replace its text later (a live-updating snippet, a growing request log). */
+export function codeSnippet(container: HTMLElement, text = ''): HTMLElement {
+  const pre = document.createElement('pre');
+  pre.className = 'config-snippet';
+  const code = document.createElement('code');
+  code.textContent = text;
+  pre.append(code);
+  container.append(pre);
+  return code;
+}
+
+/**
+ * Seeds `items` through `seed`, one at a time, in the background (module
+ * load) — then logs and swallows any failure, since a demo page's canned
+ * data shouldn't crash the app if seeding fails.
+ */
+export function seedInBackground<T>(items: readonly T[], seed: (item: T) => Promise<void>, label: string): Promise<void> {
+  return (async () => {
+    for (const item of items) await seed(item);
+  })().catch((err) => console.error(`${label} seeding failed`, err));
+}
+
+/**
+ * "Reset (replay spinner)" button: invalidate()s every item (via the
+ * service, so the nav-list's live-update subscription picks it up) and
+ * reassigns `navList.items` to a fresh array reference — a same-reference
+ * reassignment wouldn't retrigger the loadThumb() that shows the spinner
+ * again. Returned unattached so the caller controls where it lands relative
+ * to the nav-list.
+ */
+export function resetSpinnerButton(
+  items: GalleryItem[],
+  service: SnapshotService,
+  navList: SnapshotNavList,
+  pageKey: string,
+): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'Reset (replay spinner)';
+  btn.addEventListener('click', () => {
+    items.forEach((item) => service.invalidate(item.id));
+    navList.items = toClickableItems(items, pageKey);
+  });
+  return btn;
 }

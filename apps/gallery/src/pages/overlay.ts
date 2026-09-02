@@ -1,4 +1,4 @@
-import { DASHBOARDS, makeNavList, pageHeader } from '../gallery-shared';
+import { DASHBOARDS, captionedRow, makeNavList, pageHeader, sectionTitle } from '../gallery-shared';
 
 export const path = '/overlay';
 export const label = 'Overlay tint';
@@ -6,25 +6,18 @@ export const label = 'Overlay tint';
 export function render(container: HTMLElement) {
   pageHeader(container, 'Overlay tint', 'Controls the scrim behind the title so it stays legible over any image.');
 
-  const row = document.createElement('div');
-  row.className = 'overlay-row';
-  for (const tint of ['dark', 'light', 'none'] as const) {
-    const wrap = document.createElement('div');
-    wrap.className = 'overlay-cell';
-    const caption = document.createElement('p');
-    caption.className = 'overlay-caption';
-    caption.textContent = `overlay-tint="${tint}"`;
-    wrap.append(caption, makeNavList([DASHBOARDS[0]], { variant: 'tile', 'overlay-tint': tint }));
-    row.append(wrap);
-  }
-  container.append(row);
+  captionedRow(
+    container,
+    ['dark', 'light', 'none'] as const,
+    (tint) => `overlay-tint="${tint}"`,
+    (tint) => makeNavList([DASHBOARDS[0]], { variant: 'tile', 'overlay-tint': tint }),
+  );
 
-  const h3 = document.createElement('h3');
-  h3.textContent = 'Try it';
-  const p = document.createElement('p');
-  p.innerHTML =
-    'Live-adjust <code>overlay-tint</code>, <code>text-overlay-opacity</code>, <code>image-overlay-opacity</code>, and <code>overlay-blur</code> on one tile. Text and image tint are independent — keep the image clear (opacity 0) while the caption background pops.';
-  container.append(h3, p);
+  sectionTitle(
+    container,
+    'Try it',
+    'Live-adjust <code>overlay-tint</code>, <code>text-overlay-opacity</code>, <code>image-overlay-opacity</code>, and <code>overlay-blur</code> on one tile. Text and image tint are independent — keep the image clear (opacity 0) while the caption background pops.',
+  );
 
   const controls = document.createElement('div');
   controls.className = 'overlay-controls';

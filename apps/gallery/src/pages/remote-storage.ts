@@ -1,6 +1,15 @@
 import { CachedSnapshotStorage, IndexedDbSnapshotStorage, SnapshotService } from '@anton-gustafsson/snapshot-core';
 import type { RemoteSnapshotStorage, SnapshotKey } from '@anton-gustafsson/snapshot-core';
-import { DASHBOARDS, makeClickableNavList, pageHeader, proceduralBlob, toClickableItems } from '../gallery-shared';
+import {
+  DASHBOARDS,
+  codeSnippet,
+  makeClickableNavList,
+  pageHeader,
+  proceduralBlob,
+  sectionTitle,
+  seedInBackground,
+  toClickableItems,
+} from '../gallery-shared';
 
 export const path = '/remote-storage';
 export const label = 'Remote storage';
@@ -93,12 +102,13 @@ const remoteService = new SnapshotService({
   encode: { type: 'image/webp', quality: 0.8, maxEdge: 720 },
 });
 
-const seeded = (async () => {
-  for (const item of ITEMS) {
-    if (NOT_FOUND.has(item.id) || FORBIDDEN.has(item.id)) continue;
+const seeded = seedInBackground(
+  ITEMS.filter((item) => !NOT_FOUND.has(item.id) && !FORBIDDEN.has(item.id)),
+  async (item) => {
     await remote.seed(KEY_PREFIX + item.id, await proceduralBlob(`${item.id}-remote`, 480, 300, 'SERVER'));
-  }
-})().catch((err) => console.error('remote-storage seeding failed', err));
+  },
+  'remote-storage',
+);
 
 export function render(container: HTMLElement) {
   pageHeader(
@@ -118,16 +128,8 @@ export function render(container: HTMLElement) {
     navList.items = toClickableItems(ITEMS, PAGE_KEY);
   });
 
-  const h3 = document.createElement('h3');
-  h3.textContent = 'Request log';
-  container.append(h3);
-
-  const pre = document.createElement('pre');
-  pre.className = 'config-snippet';
-  logEl = document.createElement('code');
-  logEl.textContent = log.join('\n') || '(no requests yet)';
-  pre.append(logEl);
-  container.append(pre);
+  sectionTitle(container, 'Request log');
+  logEl = codeSnippet(container, log.join('\n') || '(no requests yet)');
 
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';

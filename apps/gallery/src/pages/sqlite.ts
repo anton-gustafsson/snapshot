@@ -2,14 +2,12 @@ import { CachedSnapshotStorage, SnapshotService } from '@anton-gustafsson/snapsh
 import { clear as clearIdb } from 'idb-keyval';
 import {
   DASHBOARDS,
-  makeNavList,
+  makeClickableNavList,
   pageHeader,
   proceduralBlob,
+  seedInBackground,
   toClickableItems,
-  type GalleryItem,
 } from '../gallery-shared';
-import { registerCaptureTarget } from '../gallery-registry';
-import { router } from '../router';
 import { SqliteRemoteStorage } from '../sqlite-storage';
 
 export const path = '/sqlite';
@@ -27,25 +25,24 @@ const sqliteService = new SnapshotService({
   storage: new CachedSnapshotStorage({ remote: sqliteRemote }),
   keyPrefix: SQLITE_KEY_PREFIX,
 });
-registerCaptureTarget(PAGE_KEY, { service: sqliteService, backPath: path, backLabel: label });
 
 // Seeded once, the first time this page module is loaded — as if a previous
 // session had already captured and synced these — so the section has
 // something to show without requiring a real capture target. The "SQLITE"
 // badge makes the background swap visible. `sqliteNavList` starts with no
-// items and gets them set once seeding finishes (rather than up front and
-// again after) so the thumbnail read can't double-fire per id before the
-// first call had a chance to populate the nav-list's cache.
-const sqliteNavList = makeNavList([], { variant: 'tile' }, sqliteService);
-sqliteNavList.addEventListener('nav-select', ((e: CustomEvent<GalleryItem>) => {
-  const route = e.detail.data?.route;
-  if (route) router.navigate(route);
-}) as EventListener);
-const seeded = (async () => {
-  for (const item of SQLITE_ITEMS) {
+// items (makeClickableNavList([]) registers the capture target and wires
+// nav-select routing up front) and gets them set once seeding finishes
+// (rather than up front and again after) so the thumbnail read can't
+// double-fire per id before the first call had a chance to populate the
+// nav-list's cache.
+const sqliteNavList = makeClickableNavList([], { variant: 'tile' }, sqliteService, PAGE_KEY, path, label);
+const seeded = seedInBackground(
+  SQLITE_ITEMS,
+  async (item) => {
     await sqliteRemote.seed(SQLITE_KEY_PREFIX + item.id, await proceduralBlob(`${item.id}-fresh`, 480, 300, 'SQLITE'));
-  }
-})().catch((err) => console.error('sqlite gallery seeding failed', err));
+  },
+  'sqlite gallery',
+);
 
 export function render(container: HTMLElement) {
   pageHeader(

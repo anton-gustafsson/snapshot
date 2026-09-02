@@ -1,4 +1,4 @@
-import { DASHBOARDS, makeNavList, pageHeader } from '../gallery-shared';
+import { DASHBOARDS, captionedRow, makeNavList, pageHeader, sectionTitle } from '../gallery-shared';
 
 export const path = '/theming';
 export const label = 'Theming';
@@ -17,27 +17,6 @@ const RADII = [
   { name: 'Pill', radius: '32px', radiusSm: '24px' },
 ];
 
-function swatchRow<T extends { name: string }>(
-  container: HTMLElement,
-  entries: T[],
-  apply: (nav: HTMLElement, entry: T) => void,
-) {
-  const row = document.createElement('div');
-  row.className = 'overlay-row';
-  for (const entry of entries) {
-    const wrap = document.createElement('div');
-    wrap.className = 'overlay-cell';
-    const caption = document.createElement('p');
-    caption.className = 'overlay-caption';
-    caption.textContent = entry.name;
-    const nav = makeNavList([DASHBOARDS[0]], { variant: 'tile' });
-    apply(nav, entry);
-    wrap.append(caption, nav);
-    row.append(wrap);
-  }
-  container.append(row);
-}
-
 export function render(container: HTMLElement) {
   pageHeader(
     container,
@@ -45,24 +24,36 @@ export function render(container: HTMLElement) {
     'Every visual knob is a CSS custom property set on the host element — no shadow-DOM piercing needed.',
   );
 
-  const h3a = document.createElement('h3');
-  h3a.textContent = 'Primary color';
-  const pa = document.createElement('p');
-  pa.innerHTML =
-    '<code>--snapshot-nav-list-accent</code> drives the focus outline and the corner registration marks — hover or tab to a tile to see it.';
-  container.append(h3a, pa);
-  swatchRow(container, ACCENTS, (nav, accent) => {
-    nav.style.setProperty('--snapshot-nav-list-accent', accent.value);
-  });
+  sectionTitle(
+    container,
+    'Primary color',
+    '<code>--snapshot-nav-list-accent</code> drives the focus outline and the corner registration marks — hover or tab to a tile to see it.',
+  );
+  captionedRow(
+    container,
+    ACCENTS,
+    (accent) => accent.name,
+    (accent) => {
+      const nav = makeNavList([DASHBOARDS[0]], { variant: 'tile' });
+      nav.style.setProperty('--snapshot-nav-list-accent', accent.value);
+      return nav;
+    },
+  );
 
-  const h3b = document.createElement('h3');
-  h3b.textContent = 'Border radius';
-  const pb = document.createElement('p');
-  pb.innerHTML =
-    '<code>--snapshot-nav-list-radius</code> (tile) and <code>--snapshot-nav-list-radius-sm</code> (thumb) — set both together so the frame and image corners stay in sync.';
-  container.append(h3b, pb);
-  swatchRow(container, RADII, (nav, r) => {
-    nav.style.setProperty('--snapshot-nav-list-radius', r.radius);
-    nav.style.setProperty('--snapshot-nav-list-radius-sm', r.radiusSm);
-  });
+  sectionTitle(
+    container,
+    'Border radius',
+    '<code>--snapshot-nav-list-radius</code> (tile) and <code>--snapshot-nav-list-radius-sm</code> (thumb) — set both together so the frame and image corners stay in sync.',
+  );
+  captionedRow(
+    container,
+    RADII,
+    (r) => r.name,
+    (r) => {
+      const nav = makeNavList([DASHBOARDS[0]], { variant: 'tile' });
+      nav.style.setProperty('--snapshot-nav-list-radius', r.radius);
+      nav.style.setProperty('--snapshot-nav-list-radius-sm', r.radiusSm);
+      return nav;
+    },
+  );
 }
