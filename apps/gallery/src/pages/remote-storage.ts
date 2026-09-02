@@ -134,13 +134,20 @@ export function render(container: HTMLElement) {
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';
   clearBtn.textContent = 'Drop local cache (replay the server read)';
-  clearBtn.addEventListener('click', async () => {
-    for (const item of ITEMS) {
-      await local.remove(remoteService.keyOf(item.id));
-      remoteService.invalidate(item.id);
-    }
-    note('local cache cleared — next read goes to the server');
-    navList.items = toClickableItems(ITEMS, PAGE_KEY);
+  clearBtn.addEventListener('click', () => {
+    void (async () => {
+      try {
+        for (const item of ITEMS) {
+          await local.remove(remoteService.keyOf(item.id));
+          remoteService.invalidate(item.id);
+        }
+        note('local cache cleared — next read goes to the server');
+        navList.items = toClickableItems(ITEMS, PAGE_KEY);
+      } catch (err) {
+        console.error('remote-storage: failed to drop local cache', err);
+        note('failed to clear local cache — see console');
+      }
+    })();
   });
   container.append(clearBtn);
 }

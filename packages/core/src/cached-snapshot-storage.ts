@@ -63,11 +63,19 @@ export class CachedSnapshotStorage implements SnapshotStorage {
   private cachedSizes = new Map<string, number>();
   /** In-flight revalidations, so N rows of the same key don't fan out N reads. */
   private revalidating = new Set<string>();
+  /** Keys `remove()` has deleted, so a revalidation already in flight can't resurrect them when it resolves after. */
+  private removedKeys = new Set<string>();
+  /** Only defined when the wrapped local storage has one — keeps `SnapshotService.prune()`'s capability check honest. */
+  readonly keys?: () => Promise<SnapshotKey[]>;
 
   constructor(options: CachedSnapshotStorageOptions) {
     this.options = options;
     this.remote = options.remote;
     this.local = options.local ?? new IndexedDbSnapshotStorage();
+    if (this.local.keys) {
+      const local = this.local;
+      this.keys = () => local.keys!();
+    }
   }
 
   attach(service: SnapshotService) {
@@ -79,6 +87,7 @@ export class CachedSnapshotStorage implements SnapshotStorage {
   async save(blob: Blob, key: SnapshotKey) {
     const url = await this.local.save(blob, key);
     this.cachedSizes.set(key.key, blob.size);
+    this.removedKeys.delete(key.key);
     void this.upload(blob, key);
     return url;
   }
@@ -86,6 +95,11 @@ export class CachedSnapshotStorage implements SnapshotStorage {
   async load(key: SnapshotKey) {
     const cached = await this.local.load(key);
     if (cached) {
+      // A fresh instance (e.g. after a page reload) has an empty cachedSizes
+      // even though the local copy is already on disk — without this, the
+      // first revalidate() below has nothing to compare against and always
+      // treats an unchanged remote copy as "changed".
+      if (!this.cachedSizes.has(key.key)) await this.primeCachedSize(key, cached);
       void this.revalidate(key, true);
       return cached;
     }
@@ -104,14 +118,20 @@ export class CachedSnapshotStorage implements SnapshotStorage {
     misses.forEach((key, i) => cached.set(key.key, fetched[i]));
 
     // Everything that came from the cache still gets revalidated, exactly as a
-    // single load() would.
-    for (const key of keys) {
-      if (!misses.includes(key)) void this.revalidate(key, true);
-    }
+    // single load() would — primed first, for the same reason as load() above.
+    const hits = keys.filter((key) => !misses.includes(key));
+    await Promise.all(
+      hits.map(async (key) => {
+        const url = cached.get(key.key);
+        if (url && !this.cachedSizes.has(key.key)) await this.primeCachedSize(key, url);
+      }),
+    );
+    for (const key of hits) void this.revalidate(key, true);
     return cached;
   }
 
   async remove(key: SnapshotKey) {
+    this.removedKeys.add(key.key);
     this.cachedSizes.delete(key.key);
     await this.local.remove(key);
     if (!this.remote.remove) return;
@@ -119,11 +139,19 @@ export class CachedSnapshotStorage implements SnapshotStorage {
       await this.remote.remove(key.id, key);
     } catch (err) {
       this.report(err, key, 'remove');
+      throw err;
     }
   }
 
-  keys() {
-    return this.local.keys?.() ?? Promise.resolve([]);
+  /** Best-effort: reads the cached blob back through its own URL to learn its size, without any storage needing a new method. */
+  private async primeCachedSize(key: SnapshotKey, url: string) {
+    if (typeof fetch !== 'function') return;
+    try {
+      const blob = await fetch(url).then((r) => r.blob());
+      this.cachedSizes.set(key.key, blob.size);
+    } catch {
+      // A miss here just costs one extra revalidate() write, same as before this fix.
+    }
   }
 
   private async upload(blob: Blob, key: SnapshotKey) {
@@ -148,6 +176,7 @@ export class CachedSnapshotStorage implements SnapshotStorage {
       if (!blob || blob.size === 0) return null;
       const url = await this.local.save(blob, key);
       this.cachedSizes.set(key.key, blob.size);
+      this.removedKeys.delete(key.key);
       return url;
     } catch (err) {
       this.report(err, key, 'load');
@@ -164,6 +193,9 @@ export class CachedSnapshotStorage implements SnapshotStorage {
       // The load-bearing rule: a remote miss must NEVER evict a local capture.
       // Offline, 404, and "not synced yet" all land here.
       if (!blob || blob.size === 0) return;
+      // remove() ran while this read was in flight — don't resurrect what the
+      // caller just deleted.
+      if (this.removedKeys.has(key.key)) return;
       if (this.cachedSizes.get(key.key) === blob.size) return;
       const url = await this.local.save(blob, key);
       this.cachedSizes.set(key.key, blob.size);

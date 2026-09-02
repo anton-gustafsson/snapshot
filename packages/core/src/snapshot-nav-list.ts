@@ -399,9 +399,20 @@ export class SnapshotNavList extends LitElement {
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
-  /** In-flight dedup guard, separate from `loadingIds` (which is only for spinner display) so a repeat `loadThumb` call for an id already being fetched is a no-op. */
+  /**
+   * In-flight dedup guard, separate from `loadingIds` (which is only for
+   * spinner display) so a repeat `loadThumb` call for an id already being
+   * fetched is a no-op. Keyed by `${variant}\0${id}` — not just `id` — so a
+   * `variantKey` switch mid-flight doesn't have the new variant's fetch
+   * silently dropped because the *previous* variant's id is still marked
+   * in-flight.
+   */
   private fetchingIds = new Set<string>();
   private unsubscribe?: () => void;
+
+  private fetchKey(variant: string | undefined, id: string) {
+    return `${variant ?? ''}\0${id}`;
+  }
 
   private subscribeToService() {
     this.unsubscribe?.();
@@ -412,8 +423,11 @@ export class SnapshotNavList extends LitElement {
       // not just this list's own items.
       if (!this.items.some((item) => item.id === id)) return;
       // Same reason, one dimension over: a dark-theme capture must not
-      // overwrite the light-theme tile this list is currently showing.
-      if ((variant ?? undefined) !== this.variantKey) return;
+      // overwrite the light-theme tile this list is currently showing. Folds
+      // '' and undefined together on both sides — SnapshotService.keyOf()
+      // does the same, so a caller that sets variantKey to '' instead of
+      // leaving it undefined must still match a plain (no-variant) capture.
+      if ((variant || undefined) !== (this.variantKey || undefined)) return;
       if (url === null) {
         this.thumbs.delete(id);
       } else {
@@ -455,7 +469,7 @@ export class SnapshotNavList extends LitElement {
         if (!ids.has(id)) this.thumbs.delete(id);
       }
       for (const item of this.items) {
-        if (!this.thumbs.has(item.id) && !this.fetchingIds.has(item.id)) {
+        if (!this.thumbs.has(item.id) && !this.fetchingIds.has(this.fetchKey(this.variantKey, item.id))) {
           this.loadingIds.add(item.id);
         }
       }
@@ -479,10 +493,12 @@ export class SnapshotNavList extends LitElement {
    */
   private async loadThumbs() {
     const variant = this.variantKey;
-    const wanted = this.items.filter((item) => !this.thumbs.has(item.id) && !this.fetchingIds.has(item.id));
+    const wanted = this.items.filter(
+      (item) => !this.thumbs.has(item.id) && !this.fetchingIds.has(this.fetchKey(variant, item.id)),
+    );
     if (wanted.length === 0) return;
     const ids = wanted.map((item) => item.id);
-    ids.forEach((id) => this.fetchingIds.add(id));
+    ids.forEach((id) => this.fetchingIds.add(this.fetchKey(variant, id)));
     try {
       const urls = await this.snapshotService.getMany(ids, { variant });
       // Dropped if the variant changed while the read was in flight — those
@@ -495,7 +511,7 @@ export class SnapshotNavList extends LitElement {
       console.error('snapshot-nav-list: failed to load thumbnails', err);
     } finally {
       ids.forEach((id) => {
-        this.fetchingIds.delete(id);
+        this.fetchingIds.delete(this.fetchKey(variant, id));
         this.loadingIds.delete(id);
       });
       this.requestUpdate();

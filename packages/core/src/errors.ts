@@ -20,6 +20,19 @@ export class SnapshotDetachedElementError extends SnapshotError {
   }
 }
 
+/** html2canvas rejected while rendering the element (e.g. "Unable to find element in cloned iframe"). */
+export class SnapshotRenderError extends SnapshotError {
+  constructor(
+    readonly id: string,
+    readonly cause: unknown,
+  ) {
+    super(
+      `SnapshotService: html2canvas failed while capturing "${id}": ` +
+        (cause instanceof Error ? cause.message : String(cause)),
+    );
+  }
+}
+
 /** `canvas.toBlob()` resolved null — tainted (cross-origin) content, or a zero-size element. */
 export class SnapshotTaintedCanvasError extends SnapshotError {
   constructor(readonly id: string) {

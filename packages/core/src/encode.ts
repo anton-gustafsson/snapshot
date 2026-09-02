@@ -39,8 +39,12 @@ export async function encodeSnapshot(blob: Blob, opts: EncodeOptions = {}): Prom
   try {
     bitmap = await createImageBitmap(blob);
     const { width, height } = targetSize(bitmap.width, bitmap.height, opts.maxEdge);
-    // Nothing to do: same format already, and no downscale needed.
-    if (width === bitmap.width && height === bitmap.height && blob.type === type) return blob;
+    // Nothing to do: same format already, no downscale needed, and either quality
+    // doesn't apply (png) or the caller didn't ask for a specific one — we can't
+    // tell what quality the existing blob was actually encoded at, so a caller
+    // who *did* specify one always gets a fresh encode at that quality.
+    const sameDimsAndType = width === bitmap.width && height === bitmap.height && blob.type === type;
+    if (sameDimsAndType && (type === 'image/png' || opts.quality === undefined)) return blob;
 
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');

@@ -1,6 +1,6 @@
 import type { EncodeOptions } from './encode';
 import { encodeSnapshot } from './encode';
-import { SnapshotDetachedElementError, SnapshotTaintedCanvasError } from './errors';
+import { SnapshotDetachedElementError, SnapshotRenderError, SnapshotTaintedCanvasError } from './errors';
 import type { SnapshotKey, SnapshotStorage } from './snapshot-storage';
 import { IndexedDbSnapshotStorage } from './snapshot-storage';
 
@@ -129,12 +129,18 @@ export class SnapshotService {
     this.storage.attach?.(this);
   }
 
-  /** The fully-qualified storage key for an id (+ variant) under this instance. */
+  /**
+   * The fully-qualified storage key for an id (+ variant) under this instance.
+   * `id`/`variant` are `encodeURIComponent`-escaped before joining, so a `@`
+   * (or any other character) inside either can never be mistaken for the
+   * separator itself — without escaping, `id: 'a@b'` and `id: 'a', variant: 'b'`
+   * would otherwise land on the exact same key.
+   */
   keyOf(id: string, opts: VariantOptions = {}): SnapshotKey {
     const base =
       opts.variant === undefined || opts.variant === ''
-        ? `${this.keyPrefix}${id}`
-        : `${this.keyPrefix}${id}${VARIANT_SEPARATOR}${opts.variant}`;
+        ? `${this.keyPrefix}${encodeURIComponent(id)}`
+        : `${this.keyPrefix}${encodeURIComponent(id)}${VARIANT_SEPARATOR}${encodeURIComponent(opts.variant)}`;
     const key: SnapshotKey = { id, key: base };
     if (opts.variant) key.variant = opts.variant;
     if (this.keyFor) key.key = this.keyFor(key);
@@ -151,9 +157,11 @@ export class SnapshotService {
     if (this.keyFor) return null;
     if (!key.startsWith(this.keyPrefix)) return null;
     const rest = key.slice(this.keyPrefix.length);
-    const at = rest.lastIndexOf(VARIANT_SEPARATOR);
-    if (at <= 0) return { id: rest, key };
-    return { id: rest.slice(0, at), variant: rest.slice(at + 1), key };
+    // Safe to split on the first raw '@': encodeURIComponent never emits one,
+    // so a '@' here can only be the separator this class itself inserted.
+    const at = rest.indexOf(VARIANT_SEPARATOR);
+    if (at < 0) return { id: decodeURIComponent(rest), key };
+    return { id: decodeURIComponent(rest.slice(0, at)), variant: decodeURIComponent(rest.slice(at + 1)), key };
   }
 
   /**
@@ -161,7 +169,11 @@ export class SnapshotService {
    * not a requirement. Concurrent calls for the same id/variant share one
    * render instead of racing two.
    */
-  capture(el: HTMLElement, id: string, opts: CaptureOptions = {}): Promise<string> {
+  async capture(el: HTMLElement, id: string, opts: CaptureOptions = {}): Promise<string> {
+    // Declared `async` on purpose: `keyOf()` can throw synchronously (a
+    // caller-supplied `keyFor` is free to), and without `async` that throw
+    // would escape as a synchronous exception instead of a rejected promise,
+    // bypassing a caller's chained `.catch()`.
     const key = this.keyOf(id, opts);
     const inFlight = this.capturing.get(key.key);
     if (inFlight) return inFlight;
@@ -181,15 +193,21 @@ export class SnapshotService {
     // pull a DOM-only dependency into a Node/SSR/Jest process that only wants
     // the types or a storage.
     const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(el, {
-      scale: opts.scale ?? this.scale,
-      logging: false,
-      useCORS: true,
-      x: crop.x,
-      y: crop.y,
-      width: crop.width,
-      height: crop.height,
-    });
+    let canvas: HTMLCanvasElement;
+    try {
+      canvas = await html2canvas(el, {
+        scale: opts.scale ?? this.scale,
+        logging: false,
+        useCORS: true,
+        x: crop.x,
+        y: crop.y,
+        width: crop.width,
+        height: crop.height,
+      });
+    } catch (err) {
+      // errors.ts documents every rejection from this library as a SnapshotError.
+      throw new SnapshotRenderError(key.id, err);
+    }
     const raw = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new SnapshotTaintedCanvasError(key.id))), 'image/png'),
     );
@@ -217,8 +235,13 @@ export class SnapshotService {
       for (const key of keys) byId.set(key.id, byKey.get(key.key) ?? null);
       return byId;
     }
-    const urls = await Promise.all(keys.map((key) => this.storage.load(key)));
-    keys.forEach((key, i) => byId.set(key.id, urls[i]));
+    // allSettled, not all: one item's rejection (e.g. a flaky read for one row
+    // of a ten-row list) shouldn't fail every other id's already-successful load.
+    const results = await Promise.allSettled(keys.map((key) => this.storage.load(key)));
+    keys.forEach((key, i) => {
+      const result = results[i];
+      byId.set(key.id, result.status === 'fulfilled' ? result.value : null);
+    });
     return byId;
   }
 
@@ -237,6 +260,13 @@ export class SnapshotService {
   async prune(keepIds: Iterable<string>): Promise<number> {
     if (!this.storage.keys) {
       console.warn('SnapshotService: prune() needs a storage that implements keys() — nothing was removed.');
+      return 0;
+    }
+    if (this.keyFor) {
+      console.warn(
+        'SnapshotService: prune() can\'t reverse a custom keyFor — parseKey() has no way to recover each ' +
+          'entry\'s id, so every stored key is skipped. Nothing was removed.',
+      );
       return 0;
     }
     const keep = new Set(keepIds);
