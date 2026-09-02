@@ -94,7 +94,7 @@ export function render(container: HTMLElement) {
     caption.className = 'overlay-caption';
     caption.textContent = step.caption;
     const navList = makeNavList([DASHBOARDS[0]], {
-      variant: 'icon-only',
+      variant: 'tile',
       'overlay-tint': step.tint,
       'text-overlay-opacity': String(step.opacity),
       'overlay-blur': String(step.blur),

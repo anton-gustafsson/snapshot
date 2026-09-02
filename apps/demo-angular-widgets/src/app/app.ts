@@ -1,8 +1,8 @@
 import { Component, ElementRef, computed, signal, viewChild, ChangeDetectionStrategy, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
-import type { NavItem } from '@anton-gustafsson/snapshot-core';
+// One package: the component, the DI helpers, and the core types.
+import { SnapshotNavListComponent, injectSnapshotCapture } from '@anton-gustafsson/snapshot-angular';
+import type { NavItem } from '@anton-gustafsson/snapshot-angular';
 import {
   DashboardComponent as NgxDashboardComponent,
   WidgetListComponent,
@@ -17,6 +17,15 @@ import { EditDashboardDialogComponent } from './edit-dashboard-dialog.component'
 const OPS_ICON = `<svg viewBox="0 0 24 24"><path d="M19.4 13a7.4 7.4 0 0 0 .06-1 7.4 7.4 0 0 0-.06-1l2.1-1.6a.5.5 0 0 0 .12-.66l-2-3.4a.5.5 0 0 0-.6-.22l-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.42h-4a.5.5 0 0 0-.5.42l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.22l-2 3.4a.5.5 0 0 0 .12.66L4 11a7.4 7.4 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.12.66l2 3.4a.5.5 0 0 0 .6.22l2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6a.5.5 0 0 0 .5.42h4a.5.5 0 0 0 .5-.42l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1a.5.5 0 0 0 .6-.22l2-3.4a.5.5 0 0 0-.12-.66L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>`;
 const WEATHER_ICON = `<svg viewBox="0 0 24 24"><path d="M6.5 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 17.9 8.1 4.5 4.5 0 0 1 17.5 18h-11Z"/></svg>`;
 
+/** What this app hangs off `NavItem.data` — echoed back on every event. */
+interface DashboardMeta {
+  owner: string;
+  /** Stands in for a real per-row permission check. */
+  canEdit: boolean;
+}
+
+type DashboardItem = NavItem<DashboardMeta>;
+
 @Component({
   selector: 'app-root',
   imports: [SnapshotNavListComponent, NgxDashboardComponent, WidgetListComponent],
@@ -26,13 +35,31 @@ const WEATHER_ICON = `<svg viewBox="0 0 24 24"><path d="M6.5 18a4.5 4.5 0 0 1-.4
 })
 export class App {
   private dialog = inject(MatDialog);
+  /** Ticks the app, waits a frame, re-checks the element — see injectSnapshotCapture(). */
+  private captureSnapshot = injectSnapshotCapture();
 
-  items: NavItem[] = [
-    { id: 'ops', label: 'Operations', icon: OPS_ICON, description: 'Fleet health and throughput' },
-    { id: 'weather', label: 'Weather', icon: WEATHER_ICON, description: 'Regional forecast widgets' },
+  // `editable` is per item, so the edit button follows the row's own rights
+  // instead of one component-wide flag.
+  items: DashboardItem[] = [
+    {
+      id: 'ops',
+      label: 'Operations',
+      icon: OPS_ICON,
+      description: 'Fleet health and throughput',
+      editable: true,
+      data: { owner: 'fleet-team', canEdit: true },
+    },
+    {
+      id: 'weather',
+      label: 'Weather',
+      icon: WEATHER_ICON,
+      description: 'Regional forecast widgets (read-only)',
+      editable: false,
+      data: { owner: 'platform', canEdit: false },
+    },
   ];
 
-  activeItem = signal<NavItem | null>(null);
+  activeItem = signal<DashboardItem | null>(null);
   editMode = signal(true);
   dashboardConfig = signal<DashboardDataDto | null>(null);
 
@@ -49,15 +76,15 @@ export class App {
 
   private navigating = false;
 
-  async onSelect(detail: { id: string }) {
+  // The event carries the whole item — no lookup by id.
+  async onSelect(item: DashboardItem) {
     if (this.navigating) return;
-    const item = this.items.find((i) => i.id === detail.id) ?? null;
-    if (item?.id === this.activeItem()?.id) return;
+    if (item.id === this.activeItem()?.id) return;
     this.navigating = true;
     try {
       await this.save();
       this.activeItem.set(item);
-      this.dashboardConfig.set(item ? createEmptyDashboard(item.id, 8, 12, '0.5em') : null);
+      this.dashboardConfig.set(createEmptyDashboard(item.id, 8, 12, '0.5em'));
     } finally {
       this.navigating = false;
     }
@@ -67,9 +94,7 @@ export class App {
     this.editMode.update((m) => !m);
   }
 
-  onEditItem(detail: { id: string }) {
-    const item = this.items.find((i) => i.id === detail.id);
-    if (!item) return;
+  onEditItem(item: DashboardItem) {
     this.dialog
       .open(EditDashboardDialogComponent, { data: item })
       .afterClosed()
@@ -85,15 +110,10 @@ export class App {
   async save() {
     const item = this.activeItem();
     const target = this.captureTarget();
-    if (item && target) {
-      try {
-        await snapshotService.capture(target.nativeElement, item.id);
-      } catch (err) {
-        // A thumbnail is a nice-to-have, not a gate — don't let a capture
-        // failure (e.g. tainted canvas from cross-origin widget content)
-        // block the user from navigating away from this dashboard.
-        console.error(`Failed to save snapshot for "${item.id}"`, err);
-      }
-    }
+    if (!item || !target) return;
+    // Resolves null instead of throwing when the capture couldn't happen (the
+    // element went away, tainted canvas, ...) — a thumbnail is never a gate on
+    // navigation.
+    await this.captureSnapshot(target.nativeElement, item.id);
   }
 }

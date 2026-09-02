@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import type { NavItem } from '@anton-gustafsson/snapshot-core';
+import type { NavItem } from '@anton-gustafsson/snapshot-angular';
 
 @Component({
   selector: 'app-edit-dashboard-dialog',

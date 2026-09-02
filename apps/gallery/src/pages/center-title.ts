@@ -1,4 +1,4 @@
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeClickableNavList, pageHeader } from '../gallery-shared';
 
 export const path = '/center-title';
@@ -14,8 +14,8 @@ export function render(container: HTMLElement) {
   container.append(
     makeClickableNavList(
       DASHBOARDS.slice(0, 3),
-      { variant: 'icon-only', 'label-position': 'center' },
-      snapshotService,
+      { variant: 'tile', 'label-position': 'center' },
+      getDefaultSnapshotService(),
       'center-title',
       path,
       label,

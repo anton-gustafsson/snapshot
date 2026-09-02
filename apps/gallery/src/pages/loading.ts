@@ -25,7 +25,7 @@ export function render(container: HTMLElement) {
 
   const loadingNavList = makeClickableNavList(
     LOADING_ITEMS,
-    { variant: 'icon-only' },
+    { variant: 'tile' },
     loadingService,
     'loading',
     path,

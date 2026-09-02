@@ -1,5 +1,12 @@
 import { SnapshotService } from '@anton-gustafsson/snapshot-core';
-import { DASHBOARDS, makeNavList, pageHeader, proceduralBlob, toClickableItems } from '../gallery-shared';
+import {
+  DASHBOARDS,
+  makeNavList,
+  pageHeader,
+  proceduralBlob,
+  toClickableItems,
+  type GalleryItem,
+} from '../gallery-shared';
 import { registerCaptureTarget } from '../gallery-registry';
 import { router } from '../router';
 import { SqliteSnapshotStorage } from '../sqlite-storage';
@@ -16,14 +23,15 @@ const sqliteOnlyStorage = new SqliteSnapshotStorage(1200);
 const sqliteOnlyService = new SnapshotService({ storage: sqliteOnlyStorage, keyPrefix: SQLITE_ONLY_KEY_PREFIX });
 registerCaptureTarget(PAGE_KEY, { service: sqliteOnlyService, backPath: path, backLabel: label });
 
-const sqliteOnlyNavList = makeNavList([], { variant: 'icon-only' }, sqliteOnlyService);
-sqliteOnlyNavList.addEventListener('nav-select', ((e: CustomEvent<{ route?: string }>) => {
-  if (e.detail.route) router.navigate(e.detail.route);
+const sqliteOnlyNavList = makeNavList([], { variant: 'tile' }, sqliteOnlyService);
+sqliteOnlyNavList.addEventListener('nav-select', ((e: CustomEvent<GalleryItem>) => {
+  const route = e.detail.data?.route;
+  if (route) router.navigate(route);
 }) as EventListener);
 
 const seeded = (async () => {
   for (const item of SQLITE_ONLY_ITEMS) {
-    await sqliteOnlyStorage.save(SQLITE_ONLY_KEY_PREFIX + item.id, await proceduralBlob(item.id, 480, 300, 'SQLITE'));
+    await sqliteOnlyStorage.save(await proceduralBlob(item.id, 480, 300, 'SQLITE'), sqliteOnlyService.keyOf(item.id));
   }
 })().catch((err) => console.error('sqlite-only gallery seeding failed', err));
 

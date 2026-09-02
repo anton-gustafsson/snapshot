@@ -1,4 +1,4 @@
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeClickableNavList, pageHeader } from '../gallery-shared';
 
 export const path = '/icon-grid';
@@ -8,10 +8,10 @@ export function render(container: HTMLElement) {
   pageHeader(
     container,
     'Icon grid',
-    'Default <code>variant="icon-only"</code> — a contact-sheet grid, caption pinned to the bottom of each frame. ' +
+    'Default <code>variant="tile"</code> — a contact-sheet grid, caption pinned to the bottom of each frame. ' +
       'Click a card to open its dashboard; coming back captures a real snapshot for the thumbnail.',
   );
   container.append(
-    makeClickableNavList(DASHBOARDS, { variant: 'icon-only' }, snapshotService, 'icon-grid', path, label),
+    makeClickableNavList(DASHBOARDS, { variant: 'tile' }, getDefaultSnapshotService(), 'icon-grid', path, label),
   );
 }

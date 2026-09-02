@@ -1,4 +1,4 @@
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeClickableNavList, pageHeader } from '../gallery-shared';
 
 export const path = '/big-tiles';
@@ -13,8 +13,8 @@ export function render(container: HTMLElement) {
   );
   const bigTiles = makeClickableNavList(
     DASHBOARDS.slice(0, 4),
-    { variant: 'icon-only' },
-    snapshotService,
+    { variant: 'tile' },
+    getDefaultSnapshotService(),
     'big-tiles',
     path,
     label,

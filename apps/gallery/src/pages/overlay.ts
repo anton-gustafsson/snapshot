@@ -14,7 +14,7 @@ export function render(container: HTMLElement) {
     const caption = document.createElement('p');
     caption.className = 'overlay-caption';
     caption.textContent = `overlay-tint="${tint}"`;
-    wrap.append(caption, makeNavList([DASHBOARDS[0]], { variant: 'icon-only', 'overlay-tint': tint }));
+    wrap.append(caption, makeNavList([DASHBOARDS[0]], { variant: 'tile', 'overlay-tint': tint }));
     row.append(wrap);
   }
   container.append(row);
@@ -53,7 +53,7 @@ export function render(container: HTMLElement) {
   container.append(controls);
 
   const interactiveOverlay = makeNavList([DASHBOARDS[0]], {
-    variant: 'icon-only',
+    variant: 'tile',
     'overlay-tint': 'dark',
     'text-overlay-opacity': '0.35',
     'image-overlay-opacity': '0',

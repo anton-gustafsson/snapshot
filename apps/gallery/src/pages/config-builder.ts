@@ -11,7 +11,7 @@ export const label = 'Config builder';
 
 interface Config {
   showDescription: boolean;
-  variant: 'list' | 'icon-only' | 'card';
+  variant: 'list' | 'tile' | 'card';
   labelPosition: 'bottom' | 'center';
   overlayTint: 'dark' | 'light' | 'none';
   textOverlayOpacity: number;
@@ -30,7 +30,7 @@ interface Config {
 
 const DEFAULTS: Config = {
   showDescription: false,
-  variant: 'icon-only',
+  variant: 'tile',
   labelPosition: 'bottom',
   overlayTint: 'none',
   textOverlayOpacity: 0.35,
@@ -310,23 +310,23 @@ export function render(container: HTMLElement) {
 
   checkbox(contentGrid, 'showDescription', 'Description');
 
-  select(layoutGrid, 'variant', 'Variant', ['icon-only', 'list', 'card']);
-  select(layoutGrid, 'labelPosition', 'Label position (icon-only)', ['bottom', 'center']);
+  select(layoutGrid, 'variant', 'Variant', ['card', 'tile', 'list']);
+  select(layoutGrid, 'labelPosition', 'Label position (tile)', ['bottom', 'center']);
   checkbox(layoutGrid, 'editable', 'Editable');
 
   select(overlayGrid, 'overlayTint', 'Overlay tint', ['none', 'dark', 'light']);
   range(overlayGrid, 'textOverlayOpacity', 'Text overlay opacity', 0, 1, 0.05);
   range(overlayGrid, 'imageOverlayOpacity', 'Image overlay opacity', 0, 1, 0.05);
   range(overlayGrid, 'overlayBlur', 'Overlay blur', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayMargin', 'Overlay margin (icon-only)', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayRadius', 'Overlay radius (icon-only)', 0, 20, 1, 'px');
+  range(overlayGrid, 'overlayMargin', 'Overlay margin (tile)', 0, 20, 1, 'px');
+  range(overlayGrid, 'overlayRadius', 'Overlay radius (tile)', 0, 20, 1, 'px');
 
   color(themingGrid, 'accent', 'Accent');
   range(themingGrid, 'radius', 'Tile radius', 0, 40, 1, 'px');
   range(themingGrid, 'radiusSm', 'Thumb radius', 0, 40, 1, 'px');
   range(themingGrid, 'gap', 'Gap', 0, 2, 0.05, 'rem');
-  range(themingGrid, 'tileWidth', 'Tile width (icon-only)', 100, 300, 5, 'px');
-  range(themingGrid, 'tileHeight', 'Tile height (icon-only)', 60, 200, 5, 'px');
+  range(themingGrid, 'tileWidth', 'Tile width (tile)', 100, 300, 5, 'px');
+  range(themingGrid, 'tileHeight', 'Tile height (tile)', 60, 200, 5, 'px');
 
   refresh();
 }

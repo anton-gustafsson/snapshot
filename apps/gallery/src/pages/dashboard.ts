@@ -1,4 +1,4 @@
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 import { router } from '../router';
 import { DASHBOARDS } from '../gallery-shared';
 import { captureTargets } from '../gallery-registry';
@@ -35,7 +35,7 @@ function generateWidgets(grid: HTMLElement) {
 // target" is simpler than threading state through navigo's handler args.
 let captureTarget: HTMLElement | null = null;
 let captureId: string | null = null;
-let captureService = snapshotService;
+let captureService = getDefaultSnapshotService();
 
 router.on(
   '/dashboard/:page/:id',
@@ -45,7 +45,7 @@ router.on(
     const target = captureTargets.get(pageKey);
 
     captureId = id;
-    captureService = target?.service ?? snapshotService;
+    captureService = target?.service ?? getDefaultSnapshotService();
 
     const item = DASHBOARDS.find((d) => d.id === id);
 

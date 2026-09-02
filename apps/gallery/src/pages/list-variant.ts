@@ -1,4 +1,4 @@
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 import { DASHBOARDS, makeClickableNavList, pageHeader } from '../gallery-shared';
 
 export const path = '/list-variant';
@@ -12,6 +12,6 @@ export function render(container: HTMLElement) {
       'Click a row to open its dashboard; coming back captures a real snapshot for the thumbnail.',
   );
   container.append(
-    makeClickableNavList(DASHBOARDS, { variant: 'list' }, snapshotService, 'list-variant', path, label),
+    makeClickableNavList(DASHBOARDS, { variant: 'list' }, getDefaultSnapshotService(), 'list-variant', path, label),
   );
 }

@@ -1,6 +1,6 @@
 import '@anton-gustafsson/snapshot-core';
 import { SnapshotService, IndexedDbSnapshotStorage } from '@anton-gustafsson/snapshot-core';
-import type { NavItem, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+import type { NavItem, SnapshotKey, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 import { router } from './router';
 import { registerCaptureTarget } from './gallery-registry';
 
@@ -233,12 +233,13 @@ export function proceduralBlob(seed: string, width = 480, height = 300, badge?: 
 
 /** Always resolves instantly with a generated image — no real capture/storage involved. */
 export class ProceduralStorage implements SnapshotStorage {
-  async save(id: string) {
-    return proceduralImage(id);
+  async save(_blob: Blob, key: SnapshotKey) {
+    return proceduralImage(key.id);
   }
-  async load(id: string) {
-    return proceduralImage(id);
+  async load(key: SnapshotKey) {
+    return proceduralImage(key.id);
   }
+  async remove() {}
 }
 
 /**
@@ -251,21 +252,28 @@ export class ProceduralStorage implements SnapshotStorage {
 export class DelayedProceduralStorage implements SnapshotStorage {
   private real = new IndexedDbSnapshotStorage();
   constructor(private delayMs: number) {}
-  save(id: string, blob: Blob) {
-    return this.real.save(id, blob);
+  save(blob: Blob, key: SnapshotKey) {
+    return this.real.save(blob, key);
   }
-  async load(id: string) {
+  async load(key: SnapshotKey) {
     await new Promise((r) => setTimeout(r, this.delayMs));
-    return (await this.real.load(id)) ?? proceduralImage(id);
+    return (await this.real.load(key)) ?? proceduralImage(key.id);
   }
-  remove(id: string) {
-    return this.real.remove(id);
+  remove(key: SnapshotKey) {
+    return this.real.remove(key);
   }
 }
 
 export const instantService = new SnapshotService({ storage: new ProceduralStorage(), keyPrefix: 'gallery-instant' });
 
-export const DASHBOARDS: NavItem[] = [
+/** What the gallery hangs off `NavItem.data` — the route a click should follow. */
+export interface GalleryItemData {
+  route: string;
+}
+
+export type GalleryItem = NavItem<GalleryItemData>;
+
+export const DASHBOARDS: GalleryItem[] = [
   { id: 'sales', label: 'Sales', icon: '📈' },
   { id: 'inventory', label: 'Inventory', icon: '📦' },
   { id: 'support', label: 'Support', icon: '🎧' },
@@ -274,8 +282,8 @@ export const DASHBOARDS: NavItem[] = [
   { id: 'signups', label: 'Signups', icon: '✦' },
 ];
 
-export function makeNavList(
-  items: NavItem[],
+export function makeNavList<T>(
+  items: NavItem<T>[],
   attrs: Record<string, string> = {},
   service: SnapshotService = instantService,
 ) {
@@ -295,15 +303,17 @@ export function makeNavList(
  * through. Icons are dropped: before a card's first capture it's just the
  * placeholder hatch, which is the point — click it to give it a real look.
  */
-export function toClickableItems(items: NavItem[], pageKey: string): NavItem[] {
+export function toClickableItems(items: GalleryItem[], pageKey: string): GalleryItem[] {
   return items.map(({ icon: _icon, ...item }) => ({
     ...item,
-    route: `/dashboard/${pageKey}/${item.id}`,
+    // `data` (not the deprecated `route`) — the whole item comes back on
+    // nav-select, so the handler reads the route straight off the event.
+    data: { route: `/dashboard/${pageKey}/${item.id}` },
   }));
 }
 
 export function makeClickableNavList(
-  items: NavItem[],
+  items: GalleryItem[],
   attrs: Record<string, string>,
   service: SnapshotService,
   pageKey: string,
@@ -312,8 +322,9 @@ export function makeClickableNavList(
 ) {
   registerCaptureTarget(pageKey, { service, backPath, backLabel });
   const el = makeNavList(toClickableItems(items, pageKey), attrs, service);
-  el.addEventListener('nav-select', ((e: CustomEvent<{ route?: string }>) => {
-    if (e.detail.route) router.navigate(e.detail.route);
+  el.addEventListener('nav-select', ((e: CustomEvent<GalleryItem>) => {
+    const route = e.detail.data?.route;
+    if (route) router.navigate(route);
   }) as EventListener);
   return el;
 }

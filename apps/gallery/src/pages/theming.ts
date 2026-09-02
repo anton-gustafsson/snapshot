@@ -30,7 +30,7 @@ function swatchRow<T extends { name: string }>(
     const caption = document.createElement('p');
     caption.className = 'overlay-caption';
     caption.textContent = entry.name;
-    const nav = makeNavList([DASHBOARDS[0]], { variant: 'icon-only' });
+    const nav = makeNavList([DASHBOARDS[0]], { variant: 'tile' });
     apply(nav, entry);
     wrap.append(caption, nav);
     row.append(wrap);

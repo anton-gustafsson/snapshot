@@ -19,6 +19,7 @@ class MockDashboardStorage implements SnapshotStorage {
   async load() {
     return randomDashboardImage();
   }
+  async remove() {}
 }
 
 const cardService = new SnapshotService({ storage: new MockDashboardStorage(), keyPrefix: 'gallery-dashboard-card' });
