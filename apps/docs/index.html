@@ -391,6 +391,46 @@ export class AppComponent {
           <code>SnapshotService</code>, <code>CachedSnapshotStorage</code>, …), so a consumer imports
           from one package. Peer requirement: <code>@angular/core &gt;= 19</code>.
         </p>
+
+        <h4>Scoping the service (lazy routes)</h4>
+        <p class="section-sub">
+          <code>provideSnapshot()</code> returns <code>EnvironmentProviders</code> — it only works at an
+          <em>environment injector</em> location: <code>bootstrapApplication()</code>'s <code>providers</code>,
+          or a route's own <code>providers</code> array. Not a <code>@Component</code>'s
+          <code>providers</code> — that's an element injector, and Angular rejects
+          <code>makeEnvironmentProviders()</code> there.
+        </p>
+        <p class="section-sub">
+          Put it on a lazy route instead of the app root when a feature's snapshots (and its
+          <code>keyPrefix</code>) should live and die with that feature, not with the whole app:
+        </p>
+        <pre><code>// app.routes.ts
+import { Routes } from '@angular/router';
+import { provideSnapshot, CachedSnapshotStorage } from '@anton-gustafsson/snapshot-angular';
+
+export const routes: Routes = [
+  {
+    path: 'reports',
+    loadComponent: () => import('./reports/reports.component').then((m) => m.ReportsComponent),
+    providers: [
+      provideSnapshot({
+        keyPrefix: 'reports:',
+        storage: new CachedSnapshotStorage({ /* ... */ }),
+      }),
+    ],
+  },
+];</code></pre>
+        <p class="section-sub">
+          Created once, the first time the route loads. Destroyed — releasing the
+          <code>BroadcastChannel</code> and freeing the <code>keyPrefix</code> claim — when the route's
+          injector is destroyed (deactivated, and <code>RouteReuseStrategy</code> isn't keeping it
+          alive), so re-entering the route later constructs a fresh instance with no
+          "keyPrefix already in use" warning. Skip <code>provideSnapshot()</code> entirely and
+          <code>SNAPSHOT_SERVICE</code> falls back to the app-wide default
+          (<code>providedIn: 'root'</code>) — fine for a single feature, but without the
+          <code>keyPrefix</code> isolation and per-feature <code>encode</code>/<code>storage</code> a
+          lazy scope buys you.
+        </p>
       </section>
 
       <footer class="colophon">
