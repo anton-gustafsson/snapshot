@@ -53,7 +53,7 @@ router.on(
     root.innerHTML = '';
 
     const back = document.createElement('a');
-    back.href = target?.backPath ?? '/icon-grid';
+    back.href = target?.backPath ?? '/variants';
     back.setAttribute('data-navigo', '');
     back.className = 'dashboard-back';
     back.textContent = `← Back to ${target?.backLabel ?? 'gallery'}`;

@@ -5,7 +5,7 @@
  */
 describe('capture round trip', () => {
   it('captures a view on the way out and paints it into the frame', () => {
-    cy.visit('/icon-grid');
+    cy.visit('/variants');
 
     cy.frames().find('li').first().click();
     cy.get('.dashboard-grid .dash-widget').should('have.length.greaterThan', 0);
@@ -23,7 +23,7 @@ describe('capture round trip', () => {
   });
 
   it('serves the stored capture from IndexedDB after a full reload', () => {
-    cy.visit('/icon-grid');
+    cy.visit('/variants');
     cy.frames().find('li').first().click();
     cy.get('.dashboard-grid').should('exist');
     cy.get('.dashboard-back').click();

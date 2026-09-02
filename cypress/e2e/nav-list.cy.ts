@@ -5,7 +5,7 @@
  */
 describe('<snapshot-nav-list> rendering', () => {
   it('renders one frame per item, unexposed until something is captured', () => {
-    cy.visit('/icon-grid');
+    cy.visit('/variants');
 
     cy.frames().find('li').should('have.length', 6);
     cy.frames().find('.thumb-placeholder').should('have.length', 6);
@@ -31,7 +31,7 @@ describe('<snapshot-nav-list> rendering', () => {
   });
 
   it('accepts icon-only as an alias and reflects the canonical tile variant', () => {
-    cy.visit('/icon-grid');
+    cy.visit('/variants');
 
     cy.get('snapshot-nav-list').then(($el) => {
       $el[0].setAttribute('variant', 'icon-only');
@@ -52,7 +52,7 @@ describe('<snapshot-nav-list> rendering', () => {
   });
 
   it('scrolls itself when asked instead of growing the page', () => {
-    cy.visit('/icon-grid');
+    cy.visit('/variants');
 
     cy.get('snapshot-nav-list').then(($el) => {
       const nav = $el[0];
