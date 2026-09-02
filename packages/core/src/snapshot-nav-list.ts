@@ -5,20 +5,27 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { snapshotService as defaultSnapshotService } from './snapshot-service';
 import type { SnapshotService } from './snapshot-service';
 
-export interface NavItem {
+export interface NavItem<T = unknown> {
+  /** The snapshot id — a plain domain id. Anything else the consumer needs belongs in `data`. */
   id: string;
   label: string;
   /** A plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG instead of text, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). Only the placeholder frame shown before a card's first capture. */
   icon?: string;
-  route?: string;
   description?: string;
+  /** Arbitrary consumer payload — echoed back verbatim on `nav-select` / `nav-edit`, so no lookup-by-id is needed in the handler. */
+  data?: T;
+  /** Per-item override of the component-level `editable` — for per-row rights. */
+  editable?: boolean;
+  /** @deprecated Put the route in `data` and read it off the emitted item. Kept for one release. */
+  route?: string;
 }
 
 function isMarkupIcon(icon: string): boolean {
   return icon.trimStart().startsWith('<');
 }
 
-export type SnapshotNavListVariant = 'list' | 'icon-only' | 'card';
+/** `'icon-only'` is the old name for `'tile'`; it still works and normalises to `'tile'`. */
+export type SnapshotNavListVariant = 'list' | 'tile' | 'card' | 'icon-only';
 
 /**
  * Visual identity: a contact sheet. Every tile is a "frame" — numbered like a strip
@@ -32,6 +39,16 @@ export class SnapshotNavList extends LitElement {
       display: block;
       font-family: var(--snapshot-nav-list-font, inherit);
       --frame-accent: var(--snapshot-nav-list-accent, #ff5a1f);
+      max-height: var(--snapshot-nav-list-max-height, none);
+    }
+    /* scrollable: the host owns the scroll, so a long list in a flex sidebar
+       doesn't push its siblings off-screen and the consumer doesn't have to
+       reach in with its own overflow/min-height CSS. */
+    :host([scrollable]) {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     ul {
       list-style: none;
@@ -167,10 +184,10 @@ export class SnapshotNavList extends LitElement {
       -webkit-backdrop-filter: blur(var(--overlay-blur, 0px));
       pointer-events: none;
     }
-    /* the overlay exists so icon-only's overlaid title stays legible — list
+    /* the overlay exists so a tile's overlaid title stays legible — list
        variant shows the label beside the thumb, not on top of it, so the
        tint has nothing to do there. */
-    :host(:not([variant='icon-only'])) .image-overlay {
+    :host(:not([variant='tile'])) .image-overlay {
       display: none;
     }
 
@@ -235,25 +252,25 @@ export class SnapshotNavList extends LitElement {
       height: 68px;
     }
 
-    /* icon-only: contact-sheet grid, caption strip pinned to the bottom of each frame */
-    :host([variant='icon-only']) ul {
+    /* tile: contact-sheet grid, caption strip pinned to the bottom of each frame */
+    :host([variant='tile']) ul {
       flex-direction: row;
       flex-wrap: wrap;
       gap: 0.6rem;
     }
-    :host([variant='icon-only']) li {
+    :host([variant='tile']) li {
       position: relative;
       width: var(--snapshot-nav-list-tile-width, 160px);
       height: var(--snapshot-nav-list-tile-height, 100px);
       padding: 0;
       overflow: hidden;
     }
-    :host([variant='icon-only']) .thumb-wrap {
+    :host([variant='tile']) .thumb-wrap {
       width: 100%;
       height: 100%;
       border-radius: var(--snapshot-nav-list-radius, 10px);
     }
-    :host([variant='icon-only']) .meta {
+    :host([variant='tile']) .meta {
       position: absolute;
       inset: auto 0 0 0;
       margin: var(--snapshot-nav-list-overlay-margin, 0);
@@ -266,28 +283,28 @@ export class SnapshotNavList extends LitElement {
       backdrop-filter: blur(var(--overlay-blur, 0px));
       -webkit-backdrop-filter: blur(var(--overlay-blur, 0px));
     }
-    :host([variant='icon-only']) .label {
+    :host([variant='tile']) .label {
       white-space: normal;
     }
-    :host([variant='icon-only']) .description {
+    :host([variant='tile']) .description {
       color: color-mix(in srgb, var(--overlay-text, #fff) 75%, transparent);
     }
 
     /* label-position="center": title big and centered */
-    :host([variant='icon-only'][label-position='center']) .meta {
+    :host([variant='tile'][label-position='center']) .meta {
       inset: 0;
       align-items: center;
       justify-content: center;
       padding: 0.6rem;
     }
-    :host([variant='icon-only'][label-position='center']) .label {
+    :host([variant='tile'][label-position='center']) .label {
       font-size: 1.15rem;
       font-weight: 600;
       text-align: center;
     }
 
     /* card: a contained (never cropped) preview above real body text below it —
-       text never sits on top of the image, so unlike icon-only it needs no
+       text never sits on top of the image, so unlike a tile it needs no
        overlay tint to stay legible. Modeled on a typical "preview card"
        pattern: framed shot, title + description underneath, shadow on hover. */
     :host([variant='card']) ul {
@@ -354,9 +371,18 @@ export class SnapshotNavList extends LitElement {
   `;
 
   @property({ type: Array }) items: NavItem[] = [];
-  @property({ reflect: true }) variant: SnapshotNavListVariant = 'icon-only';
+  /** `card` by default — a framed preview with title/description underneath. `tile` is the compact contact-sheet grid, `list` a sidebar row. */
+  @property({ reflect: true }) variant: SnapshotNavListVariant = 'card';
+  /**
+   * Second dimension on every id — typically the active theme, so a light and a
+   * dark capture of the same view are stored (and read) separately. Passed
+   * straight through to `SnapshotService.get()` as `variant`.
+   */
+  @property({ attribute: 'variant-key' }) variantKey?: string;
+  /** Lets the host itself scroll (see `--snapshot-nav-list-max-height`) instead of growing unbounded. */
+  @property({ type: Boolean, reflect: true }) scrollable = false;
 
-  /** icon-only tile overlay: tint behind the title so it stays legible over any image. Transparent by default — opt into a scrim explicitly. */
+  /** tile overlay: tint behind the title so it stays legible over any image. Transparent by default — opt into a scrim explicitly. */
   @property({ attribute: 'overlay-tint' }) overlayTint: 'dark' | 'light' | 'none' = 'none';
   /** caption background tint strength, 0-1 */
   @property({ type: Number, attribute: 'text-overlay-opacity' }) textOverlayOpacity = 0.35;
@@ -364,27 +390,44 @@ export class SnapshotNavList extends LitElement {
   @property({ type: Number, attribute: 'image-overlay-opacity' }) imageOverlayOpacity = 0;
   /** backdrop blur behind the title, in px */
   @property({ type: Number, attribute: 'overlay-blur' }) overlayBlur = 0;
-  /** icon-only only: 'bottom' is the caption strip (default), 'center' centers a larger title. */
+  /** tile only: 'bottom' is the caption strip (default), 'center' centers a larger title. */
   @property({ reflect: true, attribute: 'label-position' }) labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — set your own instance (e.g. a namespaced or custom-storage SnapshotService) per <snapshot-nav-list> if needed. */
   @property({ attribute: false }) snapshotService: SnapshotService = defaultSnapshotService;
-  /** Shows a top-right edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). */
+  /** Shows a top-right edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). Overridable per row via `NavItem.editable`. */
   @property({ type: Boolean }) editable = false;
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
-  /** In-flight dedup guard, separate from `loadingIds` (which is only for spinner display) so a repeat `loadThumb` call for an id already being fetched is a no-op. */
+  /**
+   * In-flight dedup guard, separate from `loadingIds` (which is only for
+   * spinner display) so a repeat `loadThumb` call for an id already being
+   * fetched is a no-op. Keyed by `${variant}\0${id}` — not just `id` — so a
+   * `variantKey` switch mid-flight doesn't have the new variant's fetch
+   * silently dropped because the *previous* variant's id is still marked
+   * in-flight.
+   */
   private fetchingIds = new Set<string>();
   private unsubscribe?: () => void;
 
+  private fetchKey(variant: string | undefined, id: string) {
+    return `${variant ?? ''}\0${id}`;
+  }
+
   private subscribeToService() {
     this.unsubscribe?.();
-    this.unsubscribe = this.snapshotService.subscribe((id, url) => {
+    this.unsubscribe = this.snapshotService.subscribe((id, url, variant) => {
       // Ignore captures for ids this list isn't showing — the service is
       // often a shared singleton, so without this guard `thumbs` would grow
       // forever with urls for every snapshot captured anywhere on the page,
       // not just this list's own items.
       if (!this.items.some((item) => item.id === id)) return;
+      // Same reason, one dimension over: a dark-theme capture must not
+      // overwrite the light-theme tile this list is currently showing. Folds
+      // '' and undefined together on both sides — SnapshotService.keyOf()
+      // does the same, so a caller that sets variantKey to '' instead of
+      // leaving it undefined must still match a plain (no-variant) capture.
+      if ((variant || undefined) !== (this.variantKey || undefined)) return;
       if (url === null) {
         this.thumbs.delete(id);
       } else {
@@ -411,13 +454,22 @@ export class SnapshotNavList extends LitElement {
   // update instead of triggering Lit's "update scheduled from updated()"
   // warning that came from doing this same flip inside updated().
   override willUpdate(changed: Map<string, unknown>) {
-    if (changed.has('items')) {
+    // 'icon-only' is the pre-0.3 name for 'tile'. Normalising here (rather
+    // than in a setter) keeps the reflected attribute — and therefore every
+    // CSS selector — on the one canonical value.
+    if (this.variant === 'icon-only') this.variant = 'tile';
+
+    // A variant-key switch (e.g. light -> dark) invalidates every thumbnail:
+    // they're separate snapshots under separate keys.
+    if (changed.has('variantKey')) this.thumbs.clear();
+
+    if (changed.has('items') || changed.has('variantKey')) {
       const ids = new Set(this.items.map((item) => item.id));
       for (const id of this.thumbs.keys()) {
         if (!ids.has(id)) this.thumbs.delete(id);
       }
       for (const item of this.items) {
-        if (!this.thumbs.has(item.id) && !this.fetchingIds.has(item.id)) {
+        if (!this.thumbs.has(item.id) && !this.fetchingIds.has(this.fetchKey(this.variantKey, item.id))) {
           this.loadingIds.add(item.id);
         }
       }
@@ -428,22 +480,40 @@ export class SnapshotNavList extends LitElement {
     if (changed.has('snapshotService')) {
       this.subscribeToService();
     }
-    if (changed.has('items')) {
-      this.items.forEach((item) => this.loadThumb(item.id));
+    if (changed.has('items') || changed.has('variantKey')) {
+      void this.loadThumbs();
     }
   }
 
-  private async loadThumb(id: string) {
-    if (this.thumbs.has(id) || this.fetchingIds.has(id)) return;
-    this.fetchingIds.add(id);
+  /**
+   * One batched read for the whole list — `getMany()` collapses to a single
+   * query/round-trip on a storage that implements `loadMany`, instead of one
+   * per row. `fetchingIds` still guards per id, so an `items` reassignment
+   * mid-flight doesn't re-request what's already coming.
+   */
+  private async loadThumbs() {
+    const variant = this.variantKey;
+    const wanted = this.items.filter(
+      (item) => !this.thumbs.has(item.id) && !this.fetchingIds.has(this.fetchKey(variant, item.id)),
+    );
+    if (wanted.length === 0) return;
+    const ids = wanted.map((item) => item.id);
+    ids.forEach((id) => this.fetchingIds.add(this.fetchKey(variant, id)));
     try {
-      const url = await this.snapshotService.get(id);
-      if (url) this.thumbs.set(id, url);
+      const urls = await this.snapshotService.getMany(ids, { variant });
+      // Dropped if the variant changed while the read was in flight — those
+      // urls belong to the previous theme.
+      if (variant !== this.variantKey) return;
+      for (const [id, url] of urls) {
+        if (url) this.thumbs.set(id, url);
+      }
     } catch (err) {
-      console.error(`snapshot-nav-list: failed to load thumbnail for "${id}"`, err);
+      console.error('snapshot-nav-list: failed to load thumbnails', err);
     } finally {
-      this.fetchingIds.delete(id);
-      this.loadingIds.delete(id);
+      ids.forEach((id) => {
+        this.fetchingIds.delete(this.fetchKey(variant, id));
+        this.loadingIds.delete(id);
+      });
       this.requestUpdate();
     }
   }
@@ -471,25 +541,19 @@ export class SnapshotNavList extends LitElement {
     return { '--overlay-bg': bg, '--overlay-text': text, '--overlay-blur': blur };
   }
 
+  // Both events carry the whole item — including `data` — so a handler never
+  // has to look the item back up by id.
   private select(item: NavItem) {
-    this.dispatchEvent(
-      new CustomEvent('nav-select', {
-        detail: { id: item.id, route: item.route },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    this.dispatchEvent(new CustomEvent<NavItem>('nav-select', { detail: item, bubbles: true, composed: true }));
   }
 
   private edit(e: Event, item: NavItem) {
     e.stopPropagation();
-    this.dispatchEvent(
-      new CustomEvent('nav-edit', {
-        detail: { id: item.id, route: item.route },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    this.dispatchEvent(new CustomEvent<NavItem>('nav-edit', { detail: item, bubbles: true, composed: true }));
+  }
+
+  private isEditable(item: NavItem) {
+    return item.editable ?? this.editable;
   }
 
   override render() {
@@ -519,7 +583,7 @@ export class SnapshotNavList extends LitElement {
                         >
                       </div>`}
                 <div class="image-overlay" part="overlay" style=${styleMap(imageOverlayStyle)}></div>
-                ${this.editable
+                ${this.isEditable(item)
                   ? html`<button
                       type="button"
                       class="edit-button"
@@ -543,12 +607,21 @@ export class SnapshotNavList extends LitElement {
   }
 }
 
-if (!customElements.get('snapshot-nav-list')) {
+/** Detail type of both `nav-select` and `nav-edit` — the clicked item itself. */
+export type SnapshotNavEvent<T = unknown> = CustomEvent<NavItem<T>>;
+
+// Guarded so importing this package in a DOM-less process (SSR, Node, a test
+// runner without jsdom) is a no-op instead of a crash.
+if (typeof customElements !== 'undefined' && !customElements.get('snapshot-nav-list')) {
   customElements.define('snapshot-nav-list', SnapshotNavList);
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     'snapshot-nav-list': SnapshotNavList;
+  }
+  interface HTMLElementEventMap {
+    'nav-select': SnapshotNavEvent;
+    'nav-edit': SnapshotNavEvent;
   }
 }

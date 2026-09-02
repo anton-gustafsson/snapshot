@@ -33,7 +33,7 @@
         <p class="eyebrow">A service, not a widget</p>
         <h1>Remember what a view<br />looked like.</h1>
         <p class="hero-sub">
-          <code>snapshotService.capture(el, id)</code> turns any DOM element into a stored
+          <code>capture(el, id)</code> turns any DOM element into a stored
           image, keyed however you want, on whatever backend you want.
           <code>&lt;snapshot-nav-list&gt;</code> is one thing you can point it at — not a requirement.
           Use the service on its own and render the result anywhere.
@@ -46,7 +46,7 @@
           <li>
             <span class="step-index">01</span>
             <h3>Capture on the way out</h3>
-            <p>Call <code>snapshotService.capture(el, id)</code> when the user leaves a view — any element, any framework.</p>
+            <p>Call <code>capture(el, id)</code> when the user leaves a view — any element, any framework.</p>
           </li>
           <li>
             <span class="step-index">02</span>
@@ -56,7 +56,7 @@
           <li>
             <span class="step-index">03</span>
             <h3>Show it wherever</h3>
-            <p><code>snapshotService.get(id)</code> returns the image URL — an <code>&lt;img&gt;</code>, a <code>&lt;snapshot-nav-list&gt;</code> tile, anything.</p>
+            <p><code>get(id)</code> returns the image URL — an <code>&lt;img&gt;</code>, a <code>&lt;snapshot-nav-list&gt;</code> tile, anything.</p>
           </li>
         </ol>
       </section>
@@ -68,18 +68,30 @@
           This is the whole surface area. No component to mount, no framework to adopt —
           just a function that captures an element and a function that reads it back.
         </p>
-        <pre><code>import { snapshotService } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
+
+const snapshots = getDefaultSnapshotService();
 
 // capture anything — a report panel, a canvas, a form preview
 const panel = document.querySelector('#quarterly-report');
-await snapshotService.capture(panel, 'q3-report');
+await snapshots.capture(panel, 'q3-report');
 
 // read it back wherever — a table cell, an email preview, your own component
-const url = await snapshotService.get('q3-report');
+const url = await snapshots.get('q3-report');
 thumbnailImg.src = url;
 
+// a second dimension on the same id — one capture per theme
+await snapshots.capture(panel, 'q3-report', { variant: 'dark' });
+const dark = await snapshots.get('q3-report', { variant: 'dark' });
+
+// one batched read for a whole list, then let the tiles paint from it
+await snapshots.prefetch(['q3-report', 'q2-report', 'q1-report']);
+
+// drop thumbnails whose entity is gone
+await snapshots.prune(['q3-report', 'q2-report']);
+
 // react to updates from any tab, any origin-mate that shares your storage
-snapshotService.subscribe((id, url) => updateThumbnail(id, url));</code></pre>
+snapshots.subscribe((id, url, variant) => updateThumbnail(id, url, variant));</code></pre>
 
         <h3>Configuration</h3>
         <table>
@@ -90,6 +102,8 @@ snapshotService.subscribe((id, url) => updateThumbnail(id, url));</code></pre>
             <tr><td><code>storage</code></td><td><code>SnapshotStorage</code></td><td>IndexedDB</td><td>Where captures are saved — see below.</td></tr>
             <tr><td><code>scale</code></td><td><code>number</code></td><td><code>0.4</code></td><td>html2canvas render scale. Lower = smaller, faster captures.</td></tr>
             <tr><td><code>keyPrefix</code></td><td><code>string</code></td><td><code>''</code></td><td>Prepended to every id in storage and in the cross-tab broadcast channel name — namespaces multiple services (or multiple apps) sharing one backend so their keys can't collide.</td></tr>
+            <tr><td><code>encode</code></td><td><code>EncodeOptions</code></td><td>none</td><td>Re-encode every capture before storing it: <code>{ type: 'image/webp', quality: 0.8, maxEdge: 480 }</code> turns a fat PNG into a thumbnail-sized WebP. Returns the original blob wherever <code>OffscreenCanvas</code> isn't available.</td></tr>
+            <tr><td><code>keyFor</code></td><td><code>(key: SnapshotKey) =&gt; string</code></td><td>none</td><td>Escape hatch for an existing store whose keys don't follow <code>keyPrefix + id [+ '@' + variant]</code>.</td></tr>
           </tbody>
         </table>
         <pre><code>import { SnapshotService } from '@anton-gustafsson/snapshot-core';
@@ -103,29 +117,40 @@ export const supportSnapshots = new SnapshotService({ keyPrefix: 'support:' });<
           Ship it as-is for a single-device tool, or point it at your own backend so thumbnails
           follow the user across machines.
         </p>
-        <pre><code>import { SnapshotService, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService, type SnapshotKey, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 
 class ApiSnapshotStorage implements SnapshotStorage {
-  async save(id: string, blob: Blob) {
+  async save(blob: Blob, key: SnapshotKey) {
     const body = new FormData();
-    body.append('file', blob, `${id}.png`);
-    const res = await fetch(`/api/snapshots/${id}`, { method: 'POST', body });
+    body.append('file', blob, `${key.key}.webp`);
+    const res = await fetch(`/api/snapshots/${key.key}`, { method: 'POST', body });
     return (await res.json()).url;
   }
-  load(id: string) {
-    return fetch(`/api/snapshots/${id}`)
+  load(key: SnapshotKey) {
+    return fetch(`/api/snapshots/${key.key}`)
       .then((r) => (r.ok ? r.json().then((j) => j.url) : null));
+  }
+  async remove(key: SnapshotKey) {
+    await fetch(`/api/snapshots/${key.key}`, { method: 'DELETE' });
   }
 }
 
-export const snapshotService = new SnapshotService({
+export const snapshots = new SnapshotService({
   storage: new ApiSnapshotStorage(),
 });</code></pre>
+        <p class="section-sub">
+          Every method takes a <code>SnapshotKey</code>: <code>{ id, variant?, key }</code> — the bare
+          id as you passed it, the variant if the call carried one, and the fully-qualified
+          <code>key</code> (prefix and variant already folded in) that's safe to use verbatim. Optional
+          <code>loadMany(keys)</code> and <code>keys()</code> unlock one round-trip per list and
+          <code>prune()</code>; optional <code>attach(service)</code> hands your storage the service so
+          it can <code>publish()</code> a late-arriving image with no wiring on your side.
+        </p>
 
         <h3>Storage recipes</h3>
         <p class="section-sub">
           Three common configurations. Live, working versions of all three are in the
-          <code>gallery</code> app — <code>/icon-grid</code> etc. use the default, and
+          <code>gallery</code> app — <code>/variants</code> etc. use the default, and
           <code>/sqlite</code> / <code>/sqlite-only</code> cover the other two end to end.
         </p>
 
@@ -133,7 +158,7 @@ export const snapshotService = new SnapshotService({
         <p class="section-sub">No <code>storage</code> option needed — this is what you get for free.</p>
         <pre><code>import { SnapshotService } from '@anton-gustafsson/snapshot-core';
 
-export const snapshotService = new SnapshotService();
+export const snapshots = new SnapshotService();
 // same as: new SnapshotService({ storage: new IndexedDbSnapshotStorage() })</code></pre>
 
         <h4>A real database only, no fallback</h4>
@@ -141,15 +166,15 @@ export const snapshotService = new SnapshotService();
           Point <code>storage</code> straight at it. Every <code>get()</code> is a real query —
           no client-side cache in front of it, so a slow backend means a slow (but honest) spinner.
         </p>
-        <pre><code>import { SnapshotService, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { SnapshotService, type SnapshotKey, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 
 class SqlSnapshotStorage implements SnapshotStorage {
-  async save(id: string, blob: Blob) { /* INSERT/UPSERT, return a displayable URL */ }
-  async load(id: string) { /* SELECT, return a displayable URL or null */ }
-  async remove(id: string) { /* DELETE */ }
+  async save(blob: Blob, key: SnapshotKey) { /* INSERT/UPSERT, return a displayable URL */ }
+  async load(key: SnapshotKey) { /* SELECT, return a displayable URL or null */ }
+  async remove(key: SnapshotKey) { /* DELETE */ }
 }
 
-export const snapshotService = new SnapshotService({
+export const snapshots = new SnapshotService({
   storage: new SqlSnapshotStorage(),
 });</code></pre>
         <p class="section-sub">
@@ -159,48 +184,72 @@ export const snapshotService = new SnapshotService({
           <code>apps/gallery/src/sqlite-storage.ts</code>.
         </p>
 
-        <h4>Database + IndexedDB preload (stale-while-revalidate)</h4>
+        <h4>Backing snapshots with a server</h4>
         <p class="section-sub">
-          Serve an instant cached image from IndexedDB while the slower, authoritative source loads
-          in the background, then swap the tile to the fresh image live — no remount — via
-          <code>SnapshotService.publish()</code>.
+          The common case for a real app, and the one you shouldn't hand-roll:
+          <code>CachedSnapshotStorage</code> puts a local IndexedDB cache in front of your API. You
+          write the two calls only you can write; it owns the caching policy.
         </p>
-        <pre><code>import { SnapshotService, IndexedDbSnapshotStorage, type SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+        <pre><code>import { CachedSnapshotStorage, SnapshotService } from '@anton-gustafsson/snapshot-core';
 
-class TieredSnapshotStorage implements SnapshotStorage {
-  constructor(
-    private fast: SnapshotStorage,   // IndexedDbSnapshotStorage
-    private slow: SnapshotStorage,   // your real backend
-    private onRevalidate: (id: string, url: string) => void,
-  ) {}
-
-  async load(id: string) {
-    const cached = await this.fast.load(id);
-    void this.revalidate(id, cached); // don't await — return the cache immediately
-    return cached;
-  }
-
-  private async revalidate(id: string, cached: string | null) {
-    const fresh = await this.slow.load(id);
-    if (!fresh || fresh === cached) return;
-    await this.fast.save(id, await fetch(fresh).then((r) => r.blob()));
-    this.onRevalidate(id, fresh); // -> snapshotService.publish(id, fresh)
-  }
-  // save()/remove() should write through to both tiers — see the gallery for the full version
-}
-
-let snapshotService: SnapshotService;
-const storage = new TieredSnapshotStorage(
-  new IndexedDbSnapshotStorage(),
-  new SqlSnapshotStorage(),
-  (id, url) => snapshotService.publish(id, url),
-);
-snapshotService = new SnapshotService({ storage });</code></pre>
+export const snapshots = new SnapshotService({
+  keyPrefix: 'reports:',
+  encode: { type: 'image/webp', quality: 0.8, maxEdge: 640 },
+  storage: new CachedSnapshotStorage({
+    remote: {
+      // null (not a rejection) for "nobody has captured this yet" — a 404 included
+      load: async (id) => {
+        const res = await fetch(`/api/snapshots/${id}`);
+        if (res.status === 404) return null;
+        if (!res.ok) throw Object.assign(new Error(res.statusText), { status: res.status });
+        return res.blob();
+      },
+      save: async (blob, id) => {
+        const body = new FormData();
+        body.append('file', blob, `${id}.webp`);
+        await fetch(`/api/snapshots/${id}`, { method: 'PUT', body });
+      },
+    },
+    // upload a small copy; the local cache keeps the full capture
+    uploadEncode: { type: 'image/webp', quality: 0.8, maxEdge: 480 },
+    maxBytes: 256 * 1024,          // mirrors the server's own cap
+    onError: (err, key, op) => {   // filter the routine failures yourself
+      if ((err as { status?: number }).status !== 403) console.warn(op, key.key, err);
+    },
+  }),
+});</code></pre>
+        <p class="section-sub">Why the defaults are what they are — these five behaviours are the reason this isn't consumer code:</p>
+        <ol class="section-sub">
+          <li><strong>Local first, revalidate behind it.</strong> <code>load()</code> returns the cached
+            image immediately and reads the server in the background, publishing the result only if it
+            actually differs. A cold miss awaits the server and returns its URL directly.</li>
+          <li><strong>A server answer of "nothing" never evicts a local capture.</strong> A 404 is the
+            normal answer for a snapshot nobody has uploaded yet — not a reason to throw away the one
+            this browser just took.</li>
+          <li><strong>A failed read never evicts either.</strong> Rejections go to <code>onError</code>
+            and the local copy stands, so thumbnails still work offline.</li>
+          <li><strong>Saves don't wait for the upload.</strong> The local write is awaited (you get a
+            displayable URL); the PUT is fired and forgotten, so a slow or refused upload can't delay a
+            navigation.</li>
+          <li><strong>Freshness is the HTTP cache's job.</strong> <code>ETag</code> +
+            <code>Cache-Control: no-cache</code> — no version bookkeeping in the library.</li>
+        </ol>
         <p class="section-sub">
-          Full version — including write-through <code>save()</code>/<code>remove()</code> and the
-          <code>keyPrefix</code> handling this snippet skips — in
-          <code>apps/gallery/src/sqlite-storage.ts</code> (<code>TieredSnapshotStorage</code>), wired
-          up in <code>apps/gallery/src/pages/sqlite.ts</code>.
+          Live version with simulated latency, a 404 and a 403: the gallery's
+          <code>/remote-storage</code> page. <code>/sqlite</code> is the same recipe over real SQLite
+          (sql.js, compiled to WASM) — see <code>apps/gallery/src/sqlite-storage.ts</code>.
+        </p>
+
+        <h4>Capturing safely in a framework</h4>
+        <p class="section-sub">
+          Capture the frame the user is about to leave, not the one that's already gone: flush pending
+          renders, wait one animation frame, then check the element is still attached. In Angular that
+          whole dance is <code>injectSnapshotCapture()</code>. Do <em>not</em> wait on
+          <code>whenStable()</code> inside a <code>canDeactivate</code> guard — the router holds a
+          pending task for the entire navigation, so it resolves only after the view is destroyed, and
+          html2canvas then fails with <em>"Unable to find element in cloned iframe"</em>. A detached
+          element rejects with <code>SnapshotDetachedElementError</code> rather than storing a blank
+          thumbnail over a good one.
         </p>
       </section>
 
@@ -231,8 +280,11 @@ snapshotService = new SnapshotService({ storage });</code></pre>
             <tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>items</code></td><td><code>NavItem[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute.</td></tr>
-            <tr><td><code>variant</code></td><td><code>'list' | 'icon-only' | 'card'</code></td><td><code>'icon-only'</code></td><td>Row-with-label; grid of tiles with the title overlaid on top; or a grid of cards with a contained (never-cropped) preview and the title/description below it.</td></tr>
+            <tr><td><code>items</code></td><td><code>NavItem&lt;T&gt;[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute. Each item is <code>{ id, label, icon?, description?, data?, editable? }</code>; <code>data</code> is your own payload, echoed back on every event.</td></tr>
+            <tr><td><code>variant</code></td><td><code>'card' | 'tile' | 'list'</code></td><td><code>'card'</code></td><td>A grid of cards with a contained (never-cropped) preview and the title/description below it; a grid of tiles with the title overlaid on top; or rows with the label beside a compact thumb. <code>'icon-only'</code> is the old name for <code>'tile'</code> and still works.</td></tr>
+            <tr><td><code>variant-key</code></td><td><code>string</code></td><td>—</td><td>Passed through to <code>get()</code> as <code>variant</code> — bind it to the active theme and each tile reads that theme's own capture.</td></tr>
+            <tr><td><code>editable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Shows a per-card edit button that fires <code>nav-edit</code> instead of <code>nav-select</code>. <code>NavItem.editable</code> overrides it per row, for per-row rights.</td></tr>
+            <tr><td><code>scrollable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>The host scrolls itself (pair with <code>--snapshot-nav-list-max-height</code>) instead of growing unbounded in a flex sidebar.</td></tr>
             <tr><td><code>overlay-tint</code></td><td><code>'dark' | 'light' | 'none'</code></td><td><code>'none'</code></td><td>Tint color used by both scrims below.</td></tr>
             <tr><td><code>text-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0.35</code></td><td>Caption background tint strength, so overlaid text stays legible.</td></tr>
             <tr><td><code>image-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0</code></td><td>Image scrim tint strength. Defaults to 0 so the image stays clear.</td></tr>
@@ -246,7 +298,8 @@ snapshotService = new SnapshotService({ storage });</code></pre>
             <tr><th>Name</th><th>Detail</th><th>Fires when</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>nav-select</code></td><td><code>{ id: string, route?: string }</code></td><td>An item is clicked or activated with Enter.</td></tr>
+            <tr><td><code>nav-select</code></td><td><code>NavItem&lt;T&gt;</code></td><td>An item is clicked or activated with Enter.</td></tr>
+            <tr><td><code>nav-edit</code></td><td><code>NavItem&lt;T&gt;</code></td><td>The edit button on an editable item is clicked.</td></tr>
           </tbody>
         </table>
 
@@ -262,8 +315,9 @@ snapshotService = new SnapshotService({ storage });</code></pre>
             <tr><td><code>--snapshot-nav-list-radius</code></td><td><code>10px</code></td></tr>
             <tr><td><code>--snapshot-nav-list-radius-sm</code></td><td><code>7px</code></td></tr>
             <tr><td><code>--snapshot-nav-list-gap</code></td><td><code>0.3rem</code></td></tr>
-            <tr><td><code>--snapshot-nav-list-overlay-margin</code></td><td><code>0</code> (icon-only caption strip)</td></tr>
-            <tr><td><code>--snapshot-nav-list-overlay-radius</code></td><td><code>0</code> (icon-only caption strip)</td></tr>
+            <tr><td><code>--snapshot-nav-list-overlay-margin</code></td><td><code>0</code> (tile caption strip)</td></tr>
+            <tr><td><code>--snapshot-nav-list-overlay-radius</code></td><td><code>0</code> (tile caption strip)</td></tr>
+            <tr><td><code>--snapshot-nav-list-max-height</code></td><td><code>none</code> (with <code>scrollable</code>)</td></tr>
           </tbody>
         </table>
 
@@ -288,25 +342,95 @@ snapshotService = new SnapshotService({ storage });</code></pre>
 const nav = document.createElement('snapshot-nav-list');
 nav.items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
 nav.addEventListener('nav-select', (e) => {
-  goTo(e.detail.id);
+  goTo(e.detail.id); // e.detail is the whole item, `data` included
 });
 document.body.append(nav);</code></pre>
 
         <h3>Angular</h3>
         <pre><code>npm install @anton-gustafsson/snapshot-angular</code></pre>
-        <pre><code>import { SnapshotNavListComponent } from '@anton-gustafsson/snapshot-angular';
+        <pre><code>// main.ts — one place to configure the service; nothing binds [snapshotService]
+import { provideSnapshot } from '@anton-gustafsson/snapshot-angular';
+
+bootstrapApplication(App, {
+  providers: [provideSnapshot({ keyPrefix: 'reports:', encode: { type: 'image/webp', maxEdge: 640 } })],
+});</code></pre>
+        <pre><code>import { SnapshotNavListComponent, injectSnapshotCapture, type NavItem } from '@anton-gustafsson/snapshot-angular';
+
+interface Report { owner: string }
 
 @Component({
   selector: 'app-root',
   imports: [SnapshotNavListComponent],
   template: `
-    &lt;ngx-snapshot-nav-list [items]="items" (select)="onSelect($event)" /&gt;
+    &lt;ngx-snapshot-nav-list
+      [items]="items"
+      [variantKey]="theme()"
+      (select)="onSelect($event)"
+      (edit)="onEdit($event)" /&gt;
   `,
 })
 export class AppComponent {
-  items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
-  onSelect(detail: { id: string }) { /* ... */ }
+  // signal inputs/outputs, zoneless-safe, no [snapshotService] binding needed
+  private capture = injectSnapshotCapture();
+
+  items: NavItem&lt;Report&gt;[] = [
+    { id: 'sales', label: 'Sales', icon: '📈', editable: true, data: { owner: 'me' } },
+  ];
+
+  // the whole item arrives — no lookup by id
+  onSelect(item: NavItem&lt;Report&gt;) { /* ... */ }
+  onEdit(item: NavItem&lt;Report&gt;) { /* ... */ }
+
+  // ticks, waits a frame, re-checks the element; resolves null instead of throwing
+  save(el: HTMLElement, id: string) {
+    return this.capture(el, id, { variant: this.theme() });
+  }
 }</code></pre>
+        <p class="section-sub">
+          The Angular package re-exports the core surface (<code>NavItem</code>,
+          <code>SnapshotService</code>, <code>CachedSnapshotStorage</code>, …), so a consumer imports
+          from one package. Peer requirement: <code>@angular/core &gt;= 19</code>.
+        </p>
+
+        <h4>Scoping the service (lazy routes)</h4>
+        <p class="section-sub">
+          <code>provideSnapshot()</code> returns <code>EnvironmentProviders</code> — it only works at an
+          <em>environment injector</em> location: <code>bootstrapApplication()</code>'s <code>providers</code>,
+          or a route's own <code>providers</code> array. Not a <code>@Component</code>'s
+          <code>providers</code> — that's an element injector, and Angular rejects
+          <code>makeEnvironmentProviders()</code> there.
+        </p>
+        <p class="section-sub">
+          Put it on a lazy route instead of the app root when a feature's snapshots (and its
+          <code>keyPrefix</code>) should live and die with that feature, not with the whole app:
+        </p>
+        <pre><code>// app.routes.ts
+import { Routes } from '@angular/router';
+import { provideSnapshot, CachedSnapshotStorage } from '@anton-gustafsson/snapshot-angular';
+
+export const routes: Routes = [
+  {
+    path: 'reports',
+    loadComponent: () => import('./reports/reports.component').then((m) => m.ReportsComponent),
+    providers: [
+      provideSnapshot({
+        keyPrefix: 'reports:',
+        storage: new CachedSnapshotStorage({ /* ... */ }),
+      }),
+    ],
+  },
+];</code></pre>
+        <p class="section-sub">
+          Created once, the first time the route loads. Destroyed — releasing the
+          <code>BroadcastChannel</code> and freeing the <code>keyPrefix</code> claim — when the route's
+          injector is destroyed (deactivated, and <code>RouteReuseStrategy</code> isn't keeping it
+          alive), so re-entering the route later constructs a fresh instance with no
+          "keyPrefix already in use" warning. Skip <code>provideSnapshot()</code> entirely and
+          <code>SNAPSHOT_SERVICE</code> falls back to the app-wide default
+          (<code>providedIn: 'root'</code>) — fine for a single feature, but without the
+          <code>keyPrefix</code> isolation and per-feature <code>encode</code>/<code>storage</code> a
+          lazy scope buys you.
+        </p>
       </section>
 
       <footer class="colophon">

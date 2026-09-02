@@ -11,9 +11,16 @@
     "dev:docs": "npm run dev -w apps/docs",
     "dev:gallery": "npm run dev -w apps/gallery",
     "build": "npm run build -w apps/demo-angular-widgets",
-    "build:packages": "npm run build -w packages/core && npm run build -w packages/angular"
+    "build:packages": "npm run build -w packages/core && npm run build -w packages/angular",
+    "test": "npm run test -w packages/core",
+    "test:e2e": "start-server-and-test dev:gallery http://localhost:3200 \"cypress run\"",
+    "test:e2e:open": "start-server-and-test dev:gallery http://localhost:3200 \"cypress open\"",
+    "test:all": "npm test && npm run test:e2e",
+    "typecheck": "npm run typecheck -w packages/core && tsc -p cypress/tsconfig.json"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "cypress": "^16.0.0",
+    "start-server-and-test": "^3.0.12"
   }
 }

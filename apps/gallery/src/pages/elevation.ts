@@ -1,4 +1,4 @@
-import { DASHBOARDS, makeNavList, pageHeader } from '../gallery-shared';
+import { DASHBOARDS, captionedRow, makeNavList, pageHeader, sectionTitle } from '../gallery-shared';
 
 export const path = '/elevation';
 export const label = 'Elevation';
@@ -15,9 +15,7 @@ export function render(container: HTMLElement) {
       "this page's theme instead of a fixed color. Tokens (<code>--shadow-1</code> etc.) are scoped to this page only, not global.",
   );
 
-  const h3Shadows = document.createElement('h3');
-  h3Shadows.textContent = 'Shadows';
-  demo.append(h3Shadows);
+  sectionTitle(demo, 'Shadows');
 
   const row = document.createElement('div');
   row.className = 'elevation-row';
@@ -36,12 +34,7 @@ export function render(container: HTMLElement) {
   }
   demo.append(row);
 
-  const h3Card = document.createElement('h3');
-  h3Card.textContent = 'Card: rest → hover';
-  demo.append(h3Card);
-  const cardP = document.createElement('p');
-  cardP.innerHTML = 'No shadow at rest; <code>--shadow-2</code> on hover.';
-  demo.append(cardP);
+  sectionTitle(demo, 'Card: rest → hover', 'No shadow at rest; <code>--shadow-2</code> on hover.');
 
   const cardCell = document.createElement('div');
   cardCell.className = 'elevation-cell';
@@ -51,12 +44,7 @@ export function render(container: HTMLElement) {
   cardCell.append(cardSwatch);
   demo.append(cardCell);
 
-  const h3Focus = document.createElement('h3');
-  h3Focus.textContent = 'Focus ring';
-  demo.append(h3Focus);
-  const focusP = document.createElement('p');
-  focusP.innerHTML = '<code>--shadow-focus</code> on <code>:focus-visible</code> — tab to it.';
-  demo.append(focusP);
+  sectionTitle(demo, 'Focus ring', '<code>--shadow-focus</code> on <code>:focus-visible</code> — tab to it.');
 
   const focusBtn = document.createElement('button');
   focusBtn.type = 'button';
@@ -64,17 +52,13 @@ export function render(container: HTMLElement) {
   focusBtn.textContent = 'Focus me';
   demo.append(focusBtn);
 
-  const h3Overlay = document.createElement('h3');
-  h3Overlay.textContent = 'Image overlays';
-  demo.append(h3Overlay);
-  const overlayP = document.createElement('p');
-  overlayP.innerHTML =
+  sectionTitle(
+    demo,
+    'Image overlays',
     "Same idea applied to <code>&lt;snapshot-nav-list&gt;</code>'s existing <code>overlay-tint</code>/<code>text-overlay-opacity</code>, plus " +
-    '<code>--snapshot-nav-list-overlay-margin</code>/<code>--snapshot-nav-list-overlay-radius</code> (both set to <code>6px</code>/<code>8px</code> here) floating the caption into a rounded chip instead of a flush strip.';
-  demo.append(overlayP);
+      '<code>--snapshot-nav-list-overlay-margin</code>/<code>--snapshot-nav-list-overlay-radius</code> (both set to <code>6px</code>/<code>8px</code> here) floating the caption into a rounded chip instead of a flush strip.',
+  );
 
-  const overlayRow = document.createElement('div');
-  overlayRow.className = 'overlay-row';
   const overlaySteps: Array<{ tint: 'light' | 'dark' | 'none'; opacity: number; blur: number; caption: string }> = [
     { tint: 'none', opacity: 0, blur: 40, caption: 'blur' },
     { tint: 'none', opacity: 0, blur: 0, caption: 'clear' },
@@ -87,22 +71,20 @@ export function render(container: HTMLElement) {
     { tint: 'dark', opacity: 0.1, blur: 0, caption: 'black-10' },
     { tint: 'dark', opacity: 0.25, blur: 0, caption: 'black-25' },
   ];
-  for (const step of overlaySteps) {
-    const cell = document.createElement('div');
-    cell.className = 'overlay-cell';
-    const caption = document.createElement('p');
-    caption.className = 'overlay-caption';
-    caption.textContent = step.caption;
-    const navList = makeNavList([DASHBOARDS[0]], {
-      variant: 'icon-only',
-      'overlay-tint': step.tint,
-      'text-overlay-opacity': String(step.opacity),
-      'overlay-blur': String(step.blur),
-    });
-    navList.style.setProperty('--snapshot-nav-list-overlay-margin', '6px');
-    navList.style.setProperty('--snapshot-nav-list-overlay-radius', '8px');
-    cell.append(caption, navList);
-    overlayRow.append(cell);
-  }
-  demo.append(overlayRow);
+  captionedRow(
+    demo,
+    overlaySteps,
+    (step) => step.caption,
+    (step) => {
+      const navList = makeNavList([DASHBOARDS[0]], {
+        variant: 'tile',
+        'overlay-tint': step.tint,
+        'text-overlay-opacity': String(step.opacity),
+        'overlay-blur': String(step.blur),
+      });
+      navList.style.setProperty('--snapshot-nav-list-overlay-margin', '6px');
+      navList.style.setProperty('--snapshot-nav-list-overlay-radius', '8px');
+      return navList;
+    },
+  );
 }

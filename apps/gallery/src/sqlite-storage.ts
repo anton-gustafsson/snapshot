@@ -1,24 +1,23 @@
 import initSqlJs, { type Database } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { get, set } from 'idb-keyval';
-import type { SnapshotStorage } from '@anton-gustafsson/snapshot-core';
+import type { RemoteSnapshotStorage, SnapshotKey, SnapshotStorage } from '@anton-gustafsson/snapshot-core';
 
 const DB_CACHE_KEY = 'gallery:sqlite-db';
 
 /**
- * SnapshotStorage backed by sql.js — real SQLite compiled to WASM, running
- * in the tab. The database file itself is persisted to IndexedDB (as raw
- * bytes via `db.export()`) so it survives reloads; sql.js has no native
- * durable storage of its own.
+ * Real SQLite compiled to WASM (sql.js), running in the tab. The database file
+ * itself is persisted to IndexedDB (as raw bytes via `db.export()`) so it
+ * survives reloads; sql.js has no durable storage of its own.
  *
  * `delayMs` simulates the latency a real embedded/remote database would add
  * (WASM init, disk I/O, network) — sql.js itself is fast enough that without
  * it every load would resolve just as instantly as the in-memory examples.
  */
-export class SqliteSnapshotStorage implements SnapshotStorage {
+class SqliteDb {
   private dbPromise: Promise<Database>;
 
-  constructor(private delayMs = 1200) {
+  constructor(private delayMs: number) {
     this.dbPromise = this.init();
   }
 
@@ -34,75 +33,87 @@ export class SqliteSnapshotStorage implements SnapshotStorage {
     await set(DB_CACHE_KEY, db.export());
   }
 
-  async save(id: string, blob: Blob) {
+  async put(key: string, blob: Blob) {
     const db = await this.dbPromise;
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    db.run('INSERT OR REPLACE INTO snapshots (id, png) VALUES (?, ?)', [id, bytes]);
+    db.run('INSERT OR REPLACE INTO snapshots (id, png) VALUES (?, ?)', [key, bytes]);
     await this.persist(db);
+  }
+
+  async fetch(key: string): Promise<Blob | null> {
+    const db = await this.dbPromise;
+    await new Promise((r) => setTimeout(r, this.delayMs));
+    const rows = db.exec('SELECT png FROM snapshots WHERE id = ?', [key]);
+    const bytes = rows[0]?.values[0]?.[0] as Uint8Array | undefined;
+    return bytes ? new Blob([bytes], { type: 'image/png' }) : null;
+  }
+
+  async drop(key: string) {
+    const db = await this.dbPromise;
+    db.run('DELETE FROM snapshots WHERE id = ?', [key]);
+    await this.persist(db);
+  }
+
+  async allKeys() {
+    const db = await this.dbPromise;
+    const rows = db.exec('SELECT id FROM snapshots');
+    return (rows[0]?.values ?? []).map(([id]) => String(id));
+  }
+}
+
+/** `SnapshotStorage` straight onto SQLite — every read is a real (slow) query, nothing in front of it. */
+export class SqliteSnapshotStorage implements SnapshotStorage {
+  private db: SqliteDb;
+
+  constructor(delayMs = 1200) {
+    this.db = new SqliteDb(delayMs);
+  }
+
+  async save(blob: Blob, key: SnapshotKey) {
+    await this.db.put(key.key, blob);
     return URL.createObjectURL(blob);
   }
 
-  async load(id: string) {
-    const db = await this.dbPromise;
-    await new Promise((r) => setTimeout(r, this.delayMs));
-    const rows = db.exec('SELECT png FROM snapshots WHERE id = ?', [id]);
-    const bytes = rows[0]?.values[0]?.[0] as Uint8Array | undefined;
-    if (!bytes) return null;
-    return URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+  async load(key: SnapshotKey) {
+    const blob = await this.db.fetch(key.key);
+    return blob ? URL.createObjectURL(blob) : null;
   }
 
-  async remove(id: string) {
-    const db = await this.dbPromise;
-    db.run('DELETE FROM snapshots WHERE id = ?', [id]);
-    await this.persist(db);
+  async remove(key: SnapshotKey) {
+    await this.db.drop(key.key);
+  }
+
+  async keys() {
+    return (await this.db.allKeys()).map((key) => ({ id: key, key }));
   }
 }
 
 /**
- * Stale-while-revalidate: `load()` returns whatever `fast` has immediately
- * (or null) for an instant paint, then always kicks off `slow` in the
- * background. If `slow` turns up a value the fast tier didn't have, that
- * value is written into `fast` (so next time it's the instant path too) and
- * handed to `onRevalidate` — wire that to `SnapshotService.publish()` so any
- * mounted <snapshot-nav-list> subscribed to the service swaps its thumbnail
- * in live, the same way a cross-tab capture would.
- *
- * This is the pattern for "IndexedDB as a preload in front of a slower
- * database": the fast tier is a local cache, the slow tier is the source of
- * truth, and the UI never blocks on the slow one.
+ * The same SQLite database, exposed as a *remote* store — blobs in, blobs out,
+ * no URLs — so `CachedSnapshotStorage` can put a local IndexedDB cache in front
+ * of it. This is all a real consumer writes: the two calls only it can make.
  */
-export class TieredSnapshotStorage implements SnapshotStorage {
-  constructor(
-    private fast: SnapshotStorage,
-    private slow: SnapshotStorage,
-    private onRevalidate: (id: string, url: string) => void,
-  ) {}
+export class SqliteRemoteStorage implements RemoteSnapshotStorage {
+  private db: SqliteDb;
 
-  async save(id: string, blob: Blob) {
-    const url = await this.fast.save(id, blob);
-    void this.slow.save(id, blob).catch((err) => console.error(`sqlite save failed for "${id}"`, err));
-    return url;
+  constructor(delayMs = 1200) {
+    this.db = new SqliteDb(delayMs);
   }
 
-  async load(id: string) {
-    const cached = await this.fast.load(id);
-    void this.revalidate(id, cached);
-    return cached;
+  load(_id: string, key: SnapshotKey) {
+    return this.db.fetch(key.key);
   }
 
-  private async revalidate(id: string, cached: string | null) {
-    try {
-      const fresh = await this.slow.load(id);
-      if (!fresh || fresh === cached) return;
-      const blob = await fetch(fresh).then((r) => r.blob());
-      await this.fast.save(id, blob);
-      this.onRevalidate(id, fresh);
-    } catch (err) {
-      console.error(`sqlite revalidation failed for "${id}"`, err);
-    }
+  async save(blob: Blob, _id: string, key: SnapshotKey) {
+    await this.db.put(key.key, blob);
   }
 
-  async remove(id: string) {
-    await Promise.all([this.fast.remove?.(id), this.slow.remove?.(id)]);
+  async remove(_id: string, key: SnapshotKey) {
+    await this.db.drop(key.key);
+  }
+
+  /** Gallery-only: seeds a row directly, standing in for "a previous session already synced this". */
+  seed(key: string, blob: Blob) {
+    return this.db.put(key, blob);
   }
 }

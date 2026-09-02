@@ -1,5 +1,5 @@
 import { SnapshotService } from '@anton-gustafsson/snapshot-core';
-import { DASHBOARDS, ProceduralStorage, makeNavList, pageHeader, randomDashboardImage } from '../gallery-shared';
+import { DASHBOARDS, ProceduralStorage, codeSnippet, lightDarkPreview, pageHeader, randomDashboardImage } from '../gallery-shared';
 
 // Own instance (not the shared `instantService`) so randomizing backgrounds
 // here doesn't leak — via the cross-tab broadcast channel — into other
@@ -11,7 +11,7 @@ export const label = 'Config builder';
 
 interface Config {
   showDescription: boolean;
-  variant: 'list' | 'icon-only' | 'card';
+  variant: 'list' | 'tile' | 'card';
   labelPosition: 'bottom' | 'center';
   overlayTint: 'dark' | 'light' | 'none';
   textOverlayOpacity: number;
@@ -30,7 +30,7 @@ interface Config {
 
 const DEFAULTS: Config = {
   showDescription: false,
-  variant: 'icon-only',
+  variant: 'tile',
   labelPosition: 'bottom',
   overlayTint: 'none',
   textOverlayOpacity: 0.35,
@@ -143,6 +143,20 @@ function field(
   return wrap;
 }
 
+/** "Copy"/"Copy link" button: writes `getText()` to the clipboard, flashes to "Copied", then reverts. */
+function copyButton(className: string, label: string, getText: () => string): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = className;
+  btn.textContent = label;
+  btn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(getText());
+    btn.textContent = 'Copied';
+    setTimeout(() => (btn.textContent = label), 1200);
+  });
+  return btn;
+}
+
 export function render(container: HTMLElement) {
   pageHeader(
     container,
@@ -171,25 +185,7 @@ export function render(container: HTMLElement) {
 
   const baseItems = DASHBOARDS.slice(0, 4);
 
-  function previewPanel(name: string, extraClass: string) {
-    const panel = document.createElement('div');
-    panel.className = `config-preview-panel ${extraClass}`;
-    const caption = document.createElement('p');
-    caption.className = 'config-preview-caption';
-    caption.textContent = name;
-    const nav = makeNavList(baseItems, {}, previewService);
-    panel.append(caption, nav);
-    return { panel, nav };
-  }
-
-  const light = previewPanel('Light', 'config-preview-light');
-  const dark = previewPanel('Dark', 'config-preview-dark');
-  const navs = [light.nav, dark.nav];
-
-  const previewRow = document.createElement('div');
-  previewRow.className = 'config-preview-row';
-  previewRow.append(light.panel, dark.panel);
-  container.append(previewRow);
+  const navs = lightDarkPreview(container, baseItems, {}, previewService);
 
   const randomizeBtn = document.createElement('button');
   randomizeBtn.type = 'button';
@@ -200,31 +196,13 @@ export function render(container: HTMLElement) {
   });
   container.append(randomizeBtn);
 
-  const pre = document.createElement('pre');
-  pre.className = 'config-snippet';
-  const code = document.createElement('code');
-  pre.append(code);
-  const copyBtn = document.createElement('button');
-  copyBtn.type = 'button';
-  copyBtn.className = 'config-copy';
-  copyBtn.textContent = 'Copy';
-  copyBtn.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(code.textContent ?? '');
-    copyBtn.textContent = 'Copied';
-    setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
-  });
-  const shareBtn = document.createElement('button');
-  shareBtn.type = 'button';
-  shareBtn.className = 'config-copy config-share';
-  shareBtn.textContent = 'Copy link';
-  shareBtn.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(location.href);
-    shareBtn.textContent = 'Copied';
-    setTimeout(() => (shareBtn.textContent = 'Copy link'), 1200);
-  });
   const snippetWrap = document.createElement('div');
   snippetWrap.className = 'config-snippet-wrap';
-  snippetWrap.append(pre, copyBtn, shareBtn);
+  const code = codeSnippet(snippetWrap);
+  snippetWrap.append(
+    copyButton('config-copy', 'Copy', () => code.textContent ?? ''),
+    copyButton('config-copy config-share', 'Copy link', () => location.href),
+  );
   container.append(snippetWrap);
 
   function refresh() {
@@ -310,23 +288,23 @@ export function render(container: HTMLElement) {
 
   checkbox(contentGrid, 'showDescription', 'Description');
 
-  select(layoutGrid, 'variant', 'Variant', ['icon-only', 'list', 'card']);
-  select(layoutGrid, 'labelPosition', 'Label position (icon-only)', ['bottom', 'center']);
+  select(layoutGrid, 'variant', 'Variant', ['card', 'tile', 'list']);
+  select(layoutGrid, 'labelPosition', 'Label position (tile)', ['bottom', 'center']);
   checkbox(layoutGrid, 'editable', 'Editable');
 
   select(overlayGrid, 'overlayTint', 'Overlay tint', ['none', 'dark', 'light']);
   range(overlayGrid, 'textOverlayOpacity', 'Text overlay opacity', 0, 1, 0.05);
   range(overlayGrid, 'imageOverlayOpacity', 'Image overlay opacity', 0, 1, 0.05);
   range(overlayGrid, 'overlayBlur', 'Overlay blur', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayMargin', 'Overlay margin (icon-only)', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayRadius', 'Overlay radius (icon-only)', 0, 20, 1, 'px');
+  range(overlayGrid, 'overlayMargin', 'Overlay margin (tile)', 0, 20, 1, 'px');
+  range(overlayGrid, 'overlayRadius', 'Overlay radius (tile)', 0, 20, 1, 'px');
 
   color(themingGrid, 'accent', 'Accent');
   range(themingGrid, 'radius', 'Tile radius', 0, 40, 1, 'px');
   range(themingGrid, 'radiusSm', 'Thumb radius', 0, 40, 1, 'px');
   range(themingGrid, 'gap', 'Gap', 0, 2, 0.05, 'rem');
-  range(themingGrid, 'tileWidth', 'Tile width (icon-only)', 100, 300, 5, 'px');
-  range(themingGrid, 'tileHeight', 'Tile height (icon-only)', 60, 200, 5, 'px');
+  range(themingGrid, 'tileWidth', 'Tile width (tile)', 100, 300, 5, 'px');
+  range(themingGrid, 'tileHeight', 'Tile height (tile)', 60, 200, 5, 'px');
 
   refresh();
 }
