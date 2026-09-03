@@ -25,12 +25,20 @@ jobs:
 
       - run: npm ci
 
+      # --no-workspaces-update matters: `^0.0.x` is patch-locked, so the moment
+      # core is bumped to 0.0.(x+1) it no longer satisfies snapshot-angular's
+      # `^0.0.x` range, and npm's automatic workspace update would install the
+      # *published* core into packages/angular/node_modules — shadowing the
+      # workspace symlink, so the Angular build would compile against the last
+      # release's typings and fail on anything newly exported. The dependency
+      # range is realigned right after, then the lockfile is synced on its own.
       - name: Bump patch versions
         run: |
-          npm version patch --no-git-tag-version -w packages/core
-          npm version patch --no-git-tag-version -w packages/angular
+          npm version patch --no-git-tag-version --no-workspaces-update -w packages/core
+          npm version patch --no-git-tag-version --no-workspaces-update -w packages/angular
           CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
           npm pkg set "dependencies.@anton-gustafsson/snapshot-core=^$CORE_VERSION" -w packages/angular
+          npm install --package-lock-only
 
       - name: Build packages
         run: npm run build:packages
