@@ -390,3 +390,39 @@ snapshot-nav-list {
   font-size: 0.8rem;
   color: #a6a9b3;
 }
+
+/* The Material Symbols `.material-symbols-outlined` class cannot cross the
+   shadow boundary, so the ligature font is applied to the part instead — the
+   @font-face itself is global, so the font is reachable from inside. */
+.dash-card-symbol-edit::part(edit-button),
+.dash-card-bare-edit::part(edit-button) {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.15rem;
+}
+
+/* Bare icon button: no chip background, larger glyph. Styled from outside the
+   shadow root via the exposed part — no component attribute needed. */
+.dash-card-bare-edit::part(edit-button) {
+  width: 2rem;
+  height: 2rem;
+  background: none;
+  border-radius: 0;
+  font-size: 1.5rem;
+  opacity: 0.65;
+}
+
+.dash-card-bare-edit::part(edit-button):hover {
+  background: none;
+  opacity: 1;
+}

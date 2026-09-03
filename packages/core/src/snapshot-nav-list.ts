@@ -20,6 +20,11 @@ function isMarkupIcon(icon: string): boolean {
 
 export type SnapshotNavListVariant = 'list' | 'icon-only' | 'card';
 
+/** `overlay` floats the edit button over the thumbnail (top-right, reveals on hover); `meta` pins it to the right edge of the title's line (description below), always visible. */
+export type SnapshotNavListEditButtonPosition = 'overlay' | 'meta';
+
+const DEFAULT_EDIT_ICON = '✎';
+
 /**
  * Visual identity: a contact sheet. Every tile is a "frame" — numbered like a strip
  * of negatives — because that's literally what a snapshot thumbnail is. All colors
@@ -228,6 +233,50 @@ export class SnapshotNavList extends LitElement {
       outline: 2px solid var(--frame-accent);
       outline-offset: 1px;
     }
+    .edit-button svg {
+      width: 1em;
+      height: 1em;
+      display: block;
+      fill: currentColor;
+    }
+
+    /* Transparent by default (display: contents) so the existing per-variant
+       .label/.meta rules — including icon-only's absolute caption strip —
+       keep applying unchanged; it only becomes a real row when the edit
+       button moves in beside the title. */
+    .label-row {
+      display: contents;
+    }
+    /* edit-button-position="meta": button on the title's line, description
+       still on its own line underneath. Not offered for icon-only, whose
+       .meta is an absolutely positioned overlay strip — the overlay button is
+       already the right place there. */
+    :host([edit-button-position='meta']:not([variant='icon-only'])) .label-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+    /* the title takes the whole row so the button lands on the card's right
+       edge, still on the title's own line (the description sits below it);
+       min-width: 0 keeps a long title ellipsising instead of pushing out. */
+    :host([edit-button-position='meta']:not([variant='icon-only'])) .label {
+      flex: 1;
+      min-width: 0;
+    }
+    :host([edit-button-position='meta']:not([variant='icon-only'])) .edit-button {
+      position: static;
+      flex-shrink: 0;
+      /* in-flow, over the host's own background: currentColor-derived instead
+         of the overlay's dark scrim, and always visible (it isn't covering
+         anything, so hiding it until hover would just make it hard to find) */
+      background: color-mix(in srgb, currentColor 10%, transparent);
+      color: inherit;
+      opacity: 1;
+    }
+    :host([edit-button-position='meta']:not([variant='icon-only'])) .edit-button:hover {
+      background: color-mix(in srgb, currentColor 20%, transparent);
+    }
 
     /* list: a compact thumb reads better in a narrow sidebar than the grid's 160x100 */
     :host([variant='list']) .thumb-wrap {
@@ -368,8 +417,13 @@ export class SnapshotNavList extends LitElement {
   @property({ reflect: true, attribute: 'label-position' }) labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — set your own instance (e.g. a namespaced or custom-storage SnapshotService) per <snapshot-nav-list> if needed. */
   @property({ attribute: false }) snapshotService: SnapshotService = defaultSnapshotService;
-  /** Shows a top-right edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). */
+  /** Shows an edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). */
   @property({ type: Boolean }) editable = false;
+  /** Where the edit button sits: `overlay` (default) floats it over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. Ignored by the icon-only variant, whose caption is itself an overlay. */
+  @property({ reflect: true, attribute: 'edit-button-position' })
+  editButtonPosition: SnapshotNavListEditButtonPosition = 'overlay';
+  /** Edit button glyph. Same convention as `NavItem.icon`: a plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). */
+  @property({ attribute: 'edit-icon' }) editIcon = DEFAULT_EDIT_ICON;
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
@@ -492,9 +546,25 @@ export class SnapshotNavList extends LitElement {
     );
   }
 
+  private renderEditButton(item: NavItem) {
+    const icon = this.editIcon || DEFAULT_EDIT_ICON;
+    return html`<button
+      type="button"
+      class="edit-button"
+      part="edit-button"
+      aria-label="Edit ${item.label}"
+      @click=${(e: Event) => this.edit(e, item)}
+    >
+      ${isMarkupIcon(icon) ? unsafeHTML(icon) : icon}
+    </button>`;
+  }
+
   override render() {
     const imageOverlayStyle = this.imageOverlayStyle;
     const metaStyle = this.metaStyle;
+    // icon-only's caption is itself an overlay strip on the image, so there's
+    // no in-flow text row to put the button in — fall back to the overlay.
+    const editInMeta = this.editButtonPosition === 'meta' && this.variant !== 'icon-only';
     return html`
       <ul role="listbox">
         ${this.items.map(
@@ -519,20 +589,13 @@ export class SnapshotNavList extends LitElement {
                         >
                       </div>`}
                 <div class="image-overlay" part="overlay" style=${styleMap(imageOverlayStyle)}></div>
-                ${this.editable
-                  ? html`<button
-                      type="button"
-                      class="edit-button"
-                      part="edit-button"
-                      aria-label="Edit ${item.label}"
-                      @click=${(e: Event) => this.edit(e, item)}
-                    >
-                      ✎
-                    </button>`
-                  : ''}
+                ${this.editable && !editInMeta ? this.renderEditButton(item) : ''}
               </div>
               <div class="meta" part="meta" style=${styleMap(metaStyle)}>
-                <span class="label" part="label">${item.label}</span>
+                <div class="label-row" part="label-row">
+                  <span class="label" part="label">${item.label}</span>
+                  ${this.editable && editInMeta ? this.renderEditButton(item) : ''}
+                </div>
                 ${item.description ? html`<span class="description" part="description">${item.description}</span>` : ''}
               </div>
             </li>

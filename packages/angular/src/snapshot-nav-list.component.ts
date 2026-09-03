@@ -12,7 +12,13 @@ import {
 } from '@angular/core';
 import '@anton-gustafsson/snapshot-core';
 import { snapshotService as defaultSnapshotService } from '@anton-gustafsson/snapshot-core';
-import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService } from '@anton-gustafsson/snapshot-core';
+import type {
+  NavItem,
+  SnapshotNavList,
+  SnapshotNavListEditButtonPosition,
+  SnapshotNavListVariant,
+  SnapshotService,
+} from '@anton-gustafsson/snapshot-core';
 
 /**
  * Thin Angular wrapper around <snapshot-nav-list>. Keeps CUSTOM_ELEMENTS_SCHEMA
@@ -41,6 +47,8 @@ import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService 
     [attr.overlay-blur]="overlayBlur"
     [attr.label-position]="labelPosition"
     [attr.editable]="editable ? '' : null"
+    [attr.edit-button-position]="editButtonPosition"
+    [attr.edit-icon]="editIcon"
     (nav-select)="onNavSelect($event)"
     (nav-edit)="onNavEdit($event)"
   ></snapshot-nav-list>`,
@@ -56,8 +64,12 @@ export class SnapshotNavListComponent implements OnChanges, AfterViewInit {
   @Input() labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — pass your own instance (e.g. a namespaced or custom-storage SnapshotService) if needed. */
   @Input() snapshotService: SnapshotService = defaultSnapshotService;
-  /** Shows a top-right edit button per card. Off by default — clicking it fires `edit` instead of `select`; the consuming app decides what "edit" means (e.g. open its own dialog component). */
+  /** Shows an edit button per card. Off by default — clicking it fires `edit` instead of `select`; the consuming app decides what "edit" means (e.g. open its own dialog component). */
   @Input() editable = false;
+  /** `overlay` (default) floats the edit button over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. Ignored by the icon-only variant. */
+  @Input() editButtonPosition: SnapshotNavListEditButtonPosition = 'overlay';
+  /** Edit button glyph — plain text (e.g. an emoji), or markup (a string starting with `<`) to pass your own icon, e.g. `<svg>...</svg>`. */
+  @Input() editIcon = '✎';
   @Output() select = new EventEmitter<{ id: string; route?: string }>();
   @Output() edit = new EventEmitter<{ id: string; route?: string }>();
 

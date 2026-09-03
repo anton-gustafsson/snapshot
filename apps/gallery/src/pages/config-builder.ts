@@ -18,6 +18,8 @@ interface Config {
   imageOverlayOpacity: number;
   overlayBlur: number;
   editable: boolean;
+  editButtonPosition: 'overlay' | 'meta';
+  editIcon: string;
   accent: string;
   radius: number;
   radiusSm: number;
@@ -37,6 +39,8 @@ const DEFAULTS: Config = {
   imageOverlayOpacity: 0,
   overlayBlur: 0,
   editable: false,
+  editButtonPosition: 'overlay',
+  editIcon: '✎',
   accent: '#ff5a1f',
   radius: 10,
   radiusSm: 7,
@@ -55,6 +59,8 @@ function applyConfig(nav: HTMLElement, c: Config) {
   nav.setAttribute('image-overlay-opacity', String(c.imageOverlayOpacity));
   nav.setAttribute('overlay-blur', String(c.overlayBlur));
   nav.toggleAttribute('editable', c.editable);
+  nav.setAttribute('edit-button-position', c.editButtonPosition);
+  nav.setAttribute('edit-icon', c.editIcon);
   nav.style.setProperty('--snapshot-nav-list-accent', c.accent);
   nav.style.setProperty('--snapshot-nav-list-radius', `${c.radius}px`);
   nav.style.setProperty('--snapshot-nav-list-radius-sm', `${c.radiusSm}px`);
@@ -73,7 +79,9 @@ function snippet(c: Config): string {
     `text-overlay-opacity="${c.textOverlayOpacity}"`,
     `image-overlay-opacity="${c.imageOverlayOpacity}"`,
     `overlay-blur="${c.overlayBlur}"`,
-    ...(c.editable ? ['editable'] : []),
+    ...(c.editable
+      ? ['editable', `edit-button-position="${c.editButtonPosition}"`, `edit-icon="${c.editIcon}"`]
+      : []),
   ].join('\n  ');
 
   const vars: [keyof Config, string, string][] = [
@@ -294,6 +302,18 @@ export function render(container: HTMLElement) {
     grid.append(field(label, el));
   }
 
+  /** Free text so an `edit-icon` can be either a glyph or raw `<svg>` markup, the same as the attribute itself accepts. */
+  function text<K extends keyof Config>(grid: HTMLElement, key: K, label: string) {
+    const el = document.createElement('input');
+    el.type = 'text';
+    el.value = config[key] as unknown as string;
+    el.addEventListener('input', () => {
+      (config[key] as unknown as string) = el.value;
+      refresh();
+    });
+    grid.append(field(label, el));
+  }
+
   function checkbox<K extends keyof Config>(grid: HTMLElement, key: K, label: string) {
     const el = document.createElement('input');
     el.type = 'checkbox';
@@ -313,6 +333,8 @@ export function render(container: HTMLElement) {
   select(layoutGrid, 'variant', 'Variant', ['icon-only', 'list', 'card']);
   select(layoutGrid, 'labelPosition', 'Label position (icon-only)', ['bottom', 'center']);
   checkbox(layoutGrid, 'editable', 'Editable');
+  select(layoutGrid, 'editButtonPosition', 'Edit button position', ['overlay', 'meta']);
+  text(layoutGrid, 'editIcon', 'Edit icon (glyph or markup)');
 
   select(overlayGrid, 'overlayTint', 'Overlay tint', ['none', 'dark', 'light']);
   range(overlayGrid, 'textOverlayOpacity', 'Text overlay opacity', 0, 1, 0.05);
