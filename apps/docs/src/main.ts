@@ -1,6 +1,6 @@
 import '@anton-gustafsson/snapshot-core';
 import type { NavItem } from '@anton-gustafsson/snapshot-core';
-import { snapshotService } from '@anton-gustafsson/snapshot-core';
+import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 
 const items: NavItem[] = [
   { id: 'revenue', label: 'Revenue', icon: '💰' },
@@ -21,13 +21,17 @@ const canvas = requireElement<HTMLElement>('pg-canvas');
 const addBtn = requireElement<HTMLButtonElement>('pg-add');
 const saveBtn = requireElement<HTMLButtonElement>('pg-save');
 
+const snapshotService = getDefaultSnapshotService();
+
 const navList = document.createElement('snapshot-nav-list');
+// `card` is the default now; the playground's sidebar wants the compact grid.
+navList.setAttribute('variant', 'tile');
 navList.items = items;
 navMount.append(navList);
 
 let activeId = items[0].id;
 
-navList.addEventListener('nav-select', ((e: CustomEvent<{ id: string }>) => {
+navList.addEventListener('nav-select', ((e: CustomEvent<NavItem>) => {
   activeId = e.detail.id;
   canvas.innerHTML = '';
 }) as EventListener);

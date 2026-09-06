@@ -119,6 +119,34 @@ main {
   accent-color: #ff5a1f;
 }
 
+.variant-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.variant-tab {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a6a9b3;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.variant-tab:hover {
+  color: #e8e9ec;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.variant-tab.active {
+  background: rgba(255, 90, 31, 0.15);
+  border-color: transparent;
+  color: #ff5a1f;
+}
+
 .config-group {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;

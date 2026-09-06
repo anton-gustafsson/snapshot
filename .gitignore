@@ -4,3 +4,7 @@ dist
 apps/host/public/browser
 apps/host/public/3rdpartylicenses.txt
 apps/host/public/prerendered-routes.json
+
+cypress/screenshots
+cypress/videos
+cypress/downloads

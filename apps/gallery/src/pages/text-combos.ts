@@ -1,4 +1,4 @@
-import { DASHBOARDS, makeNavList, pageHeader } from '../gallery-shared';
+import { DASHBOARDS, captionedRow, makeNavList, pageHeader, type GalleryItem } from '../gallery-shared';
 import type { NavItem } from '@anton-gustafsson/snapshot-core';
 
 export const path = '/text-combos';
@@ -7,13 +7,13 @@ export const label = 'Text & edit';
 const LONG_DESCRIPTION =
   'A description long enough to get clipped by the ellipsis instead of wrapping or overflowing the card.';
 
-function withDescription(item: NavItem, description?: string): NavItem {
+function withDescription(item: GalleryItem, description?: string): GalleryItem {
   return description === undefined ? { ...item } : { ...item, description };
 }
 
 interface Combo {
   caption: string;
-  items: NavItem[];
+  items: GalleryItem[];
   attrs: Record<string, string>;
 }
 
@@ -39,14 +39,14 @@ const COMBOS: Combo[] = [
     attrs: { variant: 'list', editable: '' },
   },
   {
-    caption: 'icon-only + description',
+    caption: 'tile + description',
     items: [withDescription(DASHBOARDS[4], 'Regional forecast widgets')],
-    attrs: { variant: 'icon-only' },
+    attrs: { variant: 'tile' },
   },
   {
-    caption: 'icon-only + description + editable',
+    caption: 'tile + description + editable',
     items: [withDescription(DASHBOARDS[5], 'New signups this week')],
-    attrs: { variant: 'icon-only', editable: '' },
+    attrs: { variant: 'tile', editable: '' },
   },
 ];
 
@@ -59,20 +59,17 @@ export function render(container: HTMLElement) {
       'Editing fires <code>nav-edit</code> instead of <code>nav-select</code>; nothing here listens for it beyond a console log.',
   );
 
-  const row = document.createElement('div');
-  row.className = 'overlay-row';
-  for (const combo of COMBOS) {
-    const wrap = document.createElement('div');
-    wrap.className = 'overlay-cell';
-    const caption = document.createElement('p');
-    caption.className = 'overlay-caption';
-    caption.textContent = combo.caption;
-    const el = makeNavList(combo.items, combo.attrs);
-    el.addEventListener('nav-edit', ((e: CustomEvent<{ id: string }>) => {
-      console.log(`nav-edit: ${e.detail.id}`);
-    }) as EventListener);
-    wrap.append(caption, el);
-    row.append(wrap);
-  }
-  container.append(row);
+  captionedRow(
+    container,
+    COMBOS,
+    (combo) => combo.caption,
+    (combo) => {
+      const el = makeNavList(combo.items, combo.attrs);
+      // The event carries the whole item now, `data` included.
+      el.addEventListener('nav-edit', ((e: CustomEvent<NavItem>) => {
+        console.log(`nav-edit: ${e.detail.id}`, e.detail);
+      }) as EventListener);
+      return el;
+    },
+  );
 }
