@@ -11,7 +11,13 @@ import {
   viewChild,
 } from '@angular/core';
 import '@anton-gustafsson/snapshot-core';
-import type { NavItem, SnapshotNavList, SnapshotNavListVariant, SnapshotService } from '@anton-gustafsson/snapshot-core';
+import type {
+  NavItem,
+  SnapshotNavList,
+  SnapshotNavListEditButtonPosition,
+  SnapshotNavListVariant,
+  SnapshotService,
+} from '@anton-gustafsson/snapshot-core';
 import { SNAPSHOT_SERVICE } from './provide-snapshot';
 
 /**
@@ -45,6 +51,8 @@ import { SNAPSHOT_SERVICE } from './provide-snapshot';
     [attr.overlay-blur]="overlayBlur()"
     [attr.label-position]="labelPosition()"
     [attr.editable]="editable() ? '' : null"
+    [attr.edit-button-position]="editButtonPosition()"
+    [attr.edit-icon]="editIcon()"
     [attr.scrollable]="scrollable() ? '' : null"
     (nav-select)="onNavSelect($event)"
     (nav-edit)="onNavEdit($event)"
@@ -63,6 +71,10 @@ export class SnapshotNavListComponent<T = unknown> {
   readonly labelPosition = input<'bottom' | 'center'>('bottom');
   /** Shows a top-right edit button per card — clicking it fires `edit` instead of `select`. Overridable per row via `NavItem.editable`. */
   readonly editable = input(false);
+  /** `overlay` (default) floats the edit button over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. Ignored by the tile variant. */
+  readonly editButtonPosition = input<SnapshotNavListEditButtonPosition>('overlay');
+  /** Edit button glyph — plain text (e.g. an emoji), or markup (a string starting with `<`) to pass your own icon, e.g. `<svg>...</svg>`. */
+  readonly editIcon = input('✎');
   /** Lets the component itself scroll (see `--snapshot-nav-list-max-height`) instead of growing unbounded. */
   readonly scrollable = input(false);
   /** Optional override of the injected `SnapshotService` (see `provideSnapshot()`). */
