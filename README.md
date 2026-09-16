@@ -173,6 +173,55 @@ wait one animation frame, then check the element is still attached. In Angular t
 router holds a pending task for the whole navigation, so it resolves only after the view is
 destroyed, and html2canvas then fails with *"Unable to find element in cloned iframe"*.
 
+### Reliable captures on real-world CSS
+
+`getComputedStyle` now resolves a growing share of ordinary CSS to `oklch()`/`oklab()` — Tailwind
+CSS v4's own default palette included — regardless of how the color was originally authored, and
+html2canvas can't parse either. `neutralizeOklchColors()` fixes that; `waitForCanvasesToPaint()`
+fixes a separate, unrelated blank-capture cause for `<canvas>`-based charts. Both are optional and
+opt-in — call them yourself around `capture()`, they're not run automatically.
+
+```ts
+import {
+  SnapshotService,
+  neutralizeOklchColors,
+  waitForCanvasesToPaint,
+} from '@anton-gustafsson/snapshot-core';
+
+const snapshots = new SnapshotService();
+
+async function captureReport(el: HTMLElement, id: string) {
+  // A chart widget paints its <canvas> on its own rAF cycle, outside any
+  // framework's change detection — settle that first, or html2canvas can
+  // capture it mid-redraw and store a blank thumbnail.
+  await waitForCanvasesToPaint(el);
+
+  // html2canvas clones the *whole* document, not just `el` — pass
+  // document.documentElement, not `el`, so a descendant can't still
+  // inherit an oklch/oklab color from outside the element you're capturing.
+  const restore = await neutralizeOklchColors(document.documentElement);
+  try {
+    await snapshots.capture(el, id);
+  } finally {
+    restore();
+  }
+}
+```
+
+- **`neutralizeOklchColors(root)`** — walks `root`'s subtree, rewrites every resolved
+  `oklch()`/`oklab()` to a plain inline `hsl()`, `!important`, and returns a restore callback.
+  Also neutralizes `transition`/`animation` on every element first: writing the new color is
+  itself a style change, so on a transitionable element it can start a transition, and a read of
+  the computed value straight after — by html2canvas, or anything else — lands mid-transition
+  rather than on the value just written (Chrome interpolates color transitions through oklab by
+  default), which looks identical to this function having done nothing at all. `colorjs.io` is
+  imported on demand, so a consumer that never calls this pays nothing for it upfront.
+- **`waitForCanvasesToPaint(root, maxFrames = 6)`** — polls every `<canvas>` under `root` for
+  non-transparent pixel data, one `requestAnimationFrame` per attempt. Best-effort: a canvas
+  that's still blank after `maxFrames` is left as-is rather than blocking navigation indefinitely.
+- **`CaptureOptions.onclone`** — passed straight through to html2canvas's own `onclone`, for
+  anything else that needs the actual clone rather than the live element.
+
 ### `<snapshot-nav-list>`
 
 A Lit web component styled as a contact sheet of numbered frames. Point it at a list of nav items
