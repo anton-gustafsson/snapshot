@@ -3,6 +3,33 @@
 Both packages (`@anton-gustafsson/snapshot-core`, `@anton-gustafsson/snapshot-angular`) share a
 version. Pre-1.0, so breaking changes ship with a migration note instead of a deprecation cycle.
 
+## Unreleased
+
+### Added
+
+- **`CaptureOptions.onclone`** — passed straight through to html2canvas: a hook into the cloned
+  document right before it's rendered, for anything that needs to touch the clone specifically
+  rather than the live element (html2canvas re-resolves styles on the clone, so a live-DOM mutation
+  made just before `capture()` isn't guaranteed to still apply by render time).
+- **`neutralizeOklchColors(root)`** — html2canvas can't parse `oklch()`/`oklab()`, which
+  `getComputedStyle` now resolves a growing share of real-world CSS to (any app on a palette
+  defined in OKLCH — Tailwind v4's own default colors included — hits this, regardless of how the
+  color was originally authored). Walks a subtree and pins every resolved color as a plain inline
+  `hsl()`, `!important`. Also neutralizes `transition`/`animation` first — writing a new color is
+  itself a style change, so on a transitionable element it can trigger one, and a read straight
+  after lands mid-transition (Chrome interpolates color transitions through oklab by default) rather
+  than on the value just written; without this the symptom looks identical to the fix having done
+  nothing at all. Returns a restore callback. `colorjs.io` is imported on demand, so a consumer that
+  never calls this pays nothing for it in their initial bundle.
+- **`waitForCanvasesToPaint(root, maxFrames?)`** — a `<canvas>`-based chart typically paints through
+  its own `ResizeObserver`/`requestAnimationFrame` cycle, decoupled from any framework's change
+  detection; `injectSnapshotCapture()`'s tick-plus-one-frame wait can still race a chart's own
+  pending redraw, and html2canvas only ever copies whatever's currently in the canvas's pixel
+  buffer — losing that race silently produces a capture with a blank rectangle where the chart
+  should be, no error. Polls every canvas under `root` until each has non-transparent pixel data or
+  `maxFrames` is exhausted. Best-effort by design: a canvas still blank after `maxFrames` is left as
+  is rather than blocking navigation indefinitely.
+
 ## 0.4.0 — consumer-driven API pass
 
 Implements `SNAPSHOT_PACKAGE_API_PROPOSAL.md` in one release: the storage seam, the capture

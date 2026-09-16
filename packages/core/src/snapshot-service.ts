@@ -42,6 +42,18 @@ export interface CaptureOptions extends VariantOptions {
   scale?: number;
   /** Per-call override of the instance `encode`. */
   encode?: EncodeOptions;
+  /**
+   * Passed straight through to html2canvas: called with the cloned document
+   * (and the clone of `el`) it's about to render, before it renders it. The
+   * escape hatch for anything that needs to touch the clone specifically. A
+   * returned promise is awaited.
+   *
+   * For colors specifically, prefer `neutralizeOklchColors` called on the
+   * *live* document before `capture()` (see its own docs) — html2canvas
+   * clones the whole document, not just `el`, so a fix scoped to `element`
+   * here can still miss a color a descendant inherits from outside it.
+   */
+  onclone?: (document: Document, element: HTMLElement) => void | Promise<void>;
 }
 
 const CONTENT_PADDING = 16;
@@ -203,6 +215,7 @@ export class SnapshotService {
         y: crop.y,
         width: crop.width,
         height: crop.height,
+        onclone: opts.onclone,
       });
     } catch (err) {
       // errors.ts documents every rejection from this library as a SnapshotError.
