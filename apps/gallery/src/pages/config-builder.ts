@@ -11,12 +11,6 @@ export const label = 'Config builder';
 
 interface Config {
   showDescription: boolean;
-  variant: 'list' | 'tile' | 'card';
-  labelPosition: 'bottom' | 'center';
-  overlayTint: 'dark' | 'light' | 'none';
-  textOverlayOpacity: number;
-  imageOverlayOpacity: number;
-  overlayBlur: number;
   editable: boolean;
   editButtonPosition: 'overlay' | 'meta';
   editIcon: string;
@@ -24,61 +18,34 @@ interface Config {
   radius: number;
   radiusSm: number;
   gap: number;
-  tileWidth: number;
-  tileHeight: number;
-  overlayMargin: number;
-  overlayRadius: number;
+  cardMinWidth: number;
 }
 
 const DEFAULTS: Config = {
   showDescription: false,
-  variant: 'tile',
-  labelPosition: 'bottom',
-  overlayTint: 'none',
-  textOverlayOpacity: 0.35,
-  imageOverlayOpacity: 0,
-  overlayBlur: 0,
   editable: false,
   editButtonPosition: 'overlay',
   editIcon: '✎',
   accent: '#ff5a1f',
   radius: 10,
   radiusSm: 7,
-  gap: 0.3,
-  tileWidth: 160,
-  tileHeight: 100,
-  overlayMargin: 0,
-  overlayRadius: 0,
+  gap: 1.25,
+  cardMinWidth: 220,
 };
 
 function applyConfig(nav: HTMLElement, c: Config) {
-  nav.setAttribute('variant', c.variant);
-  nav.setAttribute('label-position', c.labelPosition);
-  nav.setAttribute('overlay-tint', c.overlayTint);
-  nav.setAttribute('text-overlay-opacity', String(c.textOverlayOpacity));
-  nav.setAttribute('image-overlay-opacity', String(c.imageOverlayOpacity));
-  nav.setAttribute('overlay-blur', String(c.overlayBlur));
   nav.toggleAttribute('editable', c.editable);
   nav.setAttribute('edit-button-position', c.editButtonPosition);
   nav.setAttribute('edit-icon', c.editIcon);
   nav.style.setProperty('--snapshot-nav-list-accent', c.accent);
   nav.style.setProperty('--snapshot-nav-list-radius', `${c.radius}px`);
   nav.style.setProperty('--snapshot-nav-list-radius-sm', `${c.radiusSm}px`);
-  nav.style.setProperty('--snapshot-nav-list-gap', `${c.gap}rem`);
-  nav.style.setProperty('--snapshot-nav-list-tile-width', `${c.tileWidth}px`);
-  nav.style.setProperty('--snapshot-nav-list-tile-height', `${c.tileHeight}px`);
-  nav.style.setProperty('--snapshot-nav-list-overlay-margin', `${c.overlayMargin}px`);
-  nav.style.setProperty('--snapshot-nav-list-overlay-radius', `${c.overlayRadius}px`);
+  nav.style.setProperty('--snapshot-nav-list-card-gap', `${c.gap}rem`);
+  nav.style.setProperty('--snapshot-nav-list-card-min-width', `${c.cardMinWidth}px`);
 }
 
 function snippet(c: Config): string {
   const attrs = [
-    `variant="${c.variant}"`,
-    `label-position="${c.labelPosition}"`,
-    `overlay-tint="${c.overlayTint}"`,
-    `text-overlay-opacity="${c.textOverlayOpacity}"`,
-    `image-overlay-opacity="${c.imageOverlayOpacity}"`,
-    `overlay-blur="${c.overlayBlur}"`,
     ...(c.editable
       ? ['editable', `edit-button-position="${c.editButtonPosition}"`, `edit-icon="${c.editIcon}"`]
       : []),
@@ -88,11 +55,8 @@ function snippet(c: Config): string {
     ['accent', '--snapshot-nav-list-accent', c.accent],
     ['radius', '--snapshot-nav-list-radius', `${c.radius}px`],
     ['radiusSm', '--snapshot-nav-list-radius-sm', `${c.radiusSm}px`],
-    ['gap', '--snapshot-nav-list-gap', `${c.gap}rem`],
-    ['tileWidth', '--snapshot-nav-list-tile-width', `${c.tileWidth}px`],
-    ['tileHeight', '--snapshot-nav-list-tile-height', `${c.tileHeight}px`],
-    ['overlayMargin', '--snapshot-nav-list-overlay-margin', `${c.overlayMargin}px`],
-    ['overlayRadius', '--snapshot-nav-list-overlay-radius', `${c.overlayRadius}px`],
+    ['gap', '--snapshot-nav-list-card-gap', `${c.gap}rem`],
+    ['cardMinWidth', '--snapshot-nav-list-card-min-width', `${c.cardMinWidth}px`],
   ];
 
   const rules = vars
@@ -106,7 +70,8 @@ function snippet(c: Config): string {
     ? `\n\nnav.items = [\n  { id: 'sales', label: 'Sales', description: 'Sales overview' },\n  // ...\n];`
     : '';
 
-  return `<snapshot-nav-list\n  ${attrs}\n></snapshot-nav-list>${style}${items}`;
+  const openTag = attrs ? `<snapshot-nav-list\n  ${attrs}\n>` : '<snapshot-nav-list>';
+  return `${openTag}</snapshot-nav-list>${style}${items}`;
 }
 
 // Every non-default setting round-trips through the URL query string, so the
@@ -188,7 +153,6 @@ export function render(container: HTMLElement) {
 
   const contentGrid = group('Content');
   const layoutGrid = group('Layout');
-  const overlayGrid = group('Overlay');
   const themingGrid = group('Theming (CSS custom properties)');
 
   const baseItems = DASHBOARDS.slice(0, 4);
@@ -308,25 +272,15 @@ export function render(container: HTMLElement) {
 
   checkbox(contentGrid, 'showDescription', 'Description');
 
-  select(layoutGrid, 'variant', 'Variant', ['card', 'tile', 'list']);
-  select(layoutGrid, 'labelPosition', 'Label position (tile)', ['bottom', 'center']);
   checkbox(layoutGrid, 'editable', 'Editable');
   select(layoutGrid, 'editButtonPosition', 'Edit button position', ['overlay', 'meta']);
   text(layoutGrid, 'editIcon', 'Edit icon (glyph or markup)');
 
-  select(overlayGrid, 'overlayTint', 'Overlay tint', ['none', 'dark', 'light']);
-  range(overlayGrid, 'textOverlayOpacity', 'Text overlay opacity', 0, 1, 0.05);
-  range(overlayGrid, 'imageOverlayOpacity', 'Image overlay opacity', 0, 1, 0.05);
-  range(overlayGrid, 'overlayBlur', 'Overlay blur', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayMargin', 'Overlay margin (tile)', 0, 20, 1, 'px');
-  range(overlayGrid, 'overlayRadius', 'Overlay radius (tile)', 0, 20, 1, 'px');
-
   color(themingGrid, 'accent', 'Accent');
-  range(themingGrid, 'radius', 'Tile radius', 0, 40, 1, 'px');
+  range(themingGrid, 'radius', 'Card radius', 0, 40, 1, 'px');
   range(themingGrid, 'radiusSm', 'Thumb radius', 0, 40, 1, 'px');
   range(themingGrid, 'gap', 'Gap', 0, 2, 0.05, 'rem');
-  range(themingGrid, 'tileWidth', 'Tile width (tile)', 100, 300, 5, 'px');
-  range(themingGrid, 'tileHeight', 'Tile height (tile)', 60, 200, 5, 'px');
+  range(themingGrid, 'cardMinWidth', 'Card min width', 120, 400, 5, 'px');
 
   refresh();
 }

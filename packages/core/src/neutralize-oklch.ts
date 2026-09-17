@@ -1,6 +1,11 @@
 const OKLCH_PATTERN = /okl(?:ch|ab)\([^)]*\)/gi;
 
 /**
+ * Internal to `SnapshotService.capture()` — wired up via
+ * `CaptureOptions.neutralizeColors`, not meant to be called directly. Kept
+ * in its own module (rather than inlined) so it stays independently unit
+ * testable and `colorjs.io` stays an on-demand import.
+ *
  * html2canvas can't parse the CSS `oklch()`/`oklab()` color functions that
  * `getComputedStyle` resolves a growing share of real-world CSS to —
  * Tailwind v4's default palette among others — independent of how the color
@@ -11,13 +16,12 @@ const OKLCH_PATTERN = /okl(?:ch|ab)\([^)]*\)/gi;
  * in that space), so anything animating a color at capture time needs the
  * same treatment.
  *
- * Call this on the *live* document, before `capture()` — not just on the
- * element being captured. html2canvas clones the whole document (for
- * correct ancestor stacking/background), not only the target element, so a
- * descendant can still inherit or otherwise resolve through an ancestor this
- * call never touched if `root` is scoped too narrowly; `document.documentElement`
- * is the safe default. Restore once the capture settles — this rewrites
- * real inline styles on the live page, visibly if left in place.
+ * Runs on the whole document (`capture()` always passes
+ * `document.documentElement`), not just the captured element — html2canvas
+ * clones the whole document (for correct ancestor stacking/background), so
+ * a descendant could otherwise still inherit an un-neutralized color from
+ * outside the captured element. Restored once the capture settles — this
+ * rewrites real inline styles on the live page, visibly if left in place.
  *
  * Walks the subtree, rewrites every computed property whose value contains
  * `oklch(...)`/`oklab(...)` to an inline `hsl()` equivalent (custom

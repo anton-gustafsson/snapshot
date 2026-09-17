@@ -26,14 +26,12 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 | Path | What it is |
 |---|---|
 | `packages/core` | `@anton-gustafsson/snapshot-core` — the service, storage interface, and `<snapshot-nav-list>` component |
-| `packages/angular` | `@anton-gustafsson/snapshot-angular` — thin Angular wrapper (`<ngx-snapshot-nav-list>`) around the same web component |
 | `apps/docs` | Marketing/docs site |
-| `apps/gallery` | Interactive demo gallery (list variants, sqlite-backed storage example, etc.) |
-| `apps/demo-angular-widgets` | Angular integration demo |
+| `apps/gallery` | Interactive demo gallery (theming, config builder, sqlite-backed storage example, etc.) |
 
 ## Publishing
 
-`.github/workflows/publish.yml` patch-bumps and publishes `@anton-gustafsson/snapshot-core` and `@anton-gustafsson/snapshot-angular` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
+`.github/workflows/publish.yml` patch-bumps and publishes `@anton-gustafsson/snapshot-core` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
 
 ## Deploy
 
@@ -43,10 +41,9 @@ Live at [snapshot.moimob.com](https://snapshot.moimob.com/) — `netlify.toml` b
 
 ```bash
 npm install
-npm run dev          # runs widgets + docs + gallery together
+npm run dev          # runs docs + gallery together
 npm run dev:docs      # docs site only
 npm run dev:gallery   # gallery only
-npm run dev:widgets   # Angular demo only
 ```
 
 ## Tests
@@ -62,8 +59,8 @@ npm run typecheck     # tsc over packages/core (incl. tests) + the Cypress specs
 The Cypress specs run against `apps/gallery` because that's the only place the whole loop is real —
 a live `<snapshot-nav-list>`, real html2canvas captures, real IndexedDB, and one page per storage
 recipe. They cover the capture round trip (open a view, leave it, the frame shows the capture; it
-survives a reload), the rendering contract (variants, placeholders, per-row edit buttons,
-`scrollable`), and `CachedSnapshotStorage` against a fake HTTP API with latency, a 404 and a 403.
+survives a reload), the rendering contract (placeholders, per-row edit buttons, `scrollable`), and
+`CachedSnapshotStorage` against a fake HTTP API with latency, a 404 and a 403.
 Queries go through `cy.frames()` — a shadow-piercing helper, since a descendant selector can't cross
 a shadow boundary.
 
@@ -168,92 +165,57 @@ same recipe over real SQLite via sql.js).
 ### Capturing safely in a framework
 
 Capture the frame the user is about to leave, not the one that's already gone: flush pending renders,
-wait one animation frame, then check the element is still attached. In Angular that whole dance is
-`injectSnapshotCapture()`. Do **not** wait on `whenStable()` inside a `canDeactivate` guard — the
-router holds a pending task for the whole navigation, so it resolves only after the view is
-destroyed, and html2canvas then fails with *"Unable to find element in cloned iframe"*.
+wait one animation frame, then check the element is still attached before calling `capture()`.
 
 ### Reliable captures on real-world CSS
 
-`getComputedStyle` now resolves a growing share of ordinary CSS to `oklch()`/`oklab()` — Tailwind
-CSS v4's own default palette included — regardless of how the color was originally authored, and
-html2canvas can't parse either. `neutralizeOklchColors()` fixes that; `waitForCanvasesToPaint()`
-fixes a separate, unrelated blank-capture cause for `<canvas>`-based charts. Both are optional and
-opt-in — call them yourself around `capture()`, they're not run automatically.
+`getComputedStyle` now resolves a growing share of ordinary CSS to `oklch()`/`oklab()` (Tailwind CSS
+v4's own default palette included) regardless of how the color was originally authored, and
+html2canvas can't parse either — capture rejects with `SnapshotRenderError` instead of producing a
+thumbnail. `CaptureOptions.neutralizeColors` fixes that: rewrites every resolved `oklch()`/`oklab()`
+on the page to a plain `hsl()` for the duration of the capture (and restores it after), including
+mid-transition colors, which Chrome also resolves through oklab.
 
 ```ts
-import {
-  SnapshotService,
-  neutralizeOklchColors,
-  waitForCanvasesToPaint,
-} from '@anton-gustafsson/snapshot-core';
-
-const snapshots = new SnapshotService();
-
-async function captureReport(el: HTMLElement, id: string) {
-  // A chart widget paints its <canvas> on its own rAF cycle, outside any
-  // framework's change detection — settle that first, or html2canvas can
-  // capture it mid-redraw and store a blank thumbnail.
-  await waitForCanvasesToPaint(el);
-
-  // html2canvas clones the *whole* document, not just `el` — pass
-  // document.documentElement, not `el`, so a descendant can't still
-  // inherit an oklch/oklab color from outside the element you're capturing.
-  const restore = await neutralizeOklchColors(document.documentElement);
-  try {
-    await snapshots.capture(el, id);
-  } finally {
-    restore();
-  }
-}
+await snapshots.capture(el, id, { neutralizeColors: true });
 ```
 
-- **`neutralizeOklchColors(root)`** — walks `root`'s subtree, rewrites every resolved
-  `oklch()`/`oklab()` to a plain inline `hsl()`, `!important`, and returns a restore callback.
-  Also neutralizes `transition`/`animation` on every element first: writing the new color is
-  itself a style change, so on a transitionable element it can start a transition, and a read of
-  the computed value straight after — by html2canvas, or anything else — lands mid-transition
-  rather than on the value just written (Chrome interpolates color transitions through oklab by
-  default), which looks identical to this function having done nothing at all. `colorjs.io` is
-  imported on demand, so a consumer that never calls this pays nothing for it upfront.
-- **`waitForCanvasesToPaint(root, maxFrames = 6)`** — polls every `<canvas>` under `root` for
-  non-transparent pixel data, one `requestAnimationFrame` per attempt. Best-effort: a canvas
-  that's still blank after `maxFrames` is left as-is rather than blocking navigation indefinitely.
-- **`CaptureOptions.onclone`** — passed straight through to html2canvas's own `onclone`, for
-  anything else that needs the actual clone rather than the live element.
+Off by default — most pages never hit this, and it costs a full-document style walk plus an
+on-demand import of `colorjs.io`, so it's not worth paying for unconditionally. `CaptureOptions.onclone`
+is still there too, passed straight through to html2canvas's own `onclone`, for anything else that
+needs the actual clone rather than the live element.
+
+### Fixed-size thumbnails (`fit`)
+
+By default, `capture()` renders `el` at its own size, cropped to the bounding box of its visible
+children (padded by `CONTENT_PADDING`, 16px) — so a container much bigger than its content doesn't
+capture as mostly empty space. Pass `width`/`height`/`fit` instead to get an exact, pre-sized
+thumbnail regardless of `el`'s own shape — the way a fixed nav-list preview slot usually wants one:
+
+```ts
+await snapshots.capture(boardEl, boardId, {
+  width: 480,
+  height: 240,
+  fit: 'cover', // scale to fill, crop the overflow, centered — like object-fit: cover
+  // fit: 'contain' scales to fit entirely inside instead, letterboxed with `background`
+  background: 'var(--color-paper)',
+});
+```
+
+This clones `el` off-screen into a `width`×`height` frame and captures that — the default content-crop
+is skipped automatically once `fit` is set (the frame is already the exact requested size), so it
+never fights the scaling. Pass `contentCrop: false` on its own, without `fit`, to opt out of the
+default content-crop for any other reason — e.g. a container built to be captured at its own exact
+size on purpose.
 
 ### `<snapshot-nav-list>`
 
-A Lit web component styled as a contact sheet of numbered frames. Point it at a list of nav items
-(and, optionally, a `SnapshotService` instance); fully themeable via CSS custom properties.
+A Lit web component: a grid of preview cards, a contained (never-cropped) screenshot above real
+title/description text. Point it at a list of nav items (and, optionally, a `SnapshotService`
+instance); fully themeable via CSS custom properties.
 
-- `variant` — `'card'` (default), `'tile'`, `'list'`. `'icon-only'` is the old name for `'tile'` and still works.
 - `variant-key` — passed through to `get()` as `variant`; bind it to the active theme.
 - `editable` — per-card edit button firing `nav-edit`; `NavItem.editable` overrides it per row.
+- `edit-button-position` — `'overlay'` (default, floats over the preview) or `'meta'` (pinned beside the title).
 - `scrollable` — the host scrolls itself, with `--snapshot-nav-list-max-height`.
 - `nav-select` / `nav-edit` — detail is the whole `NavItem<T>`, `data` payload included.
-
-### `@anton-gustafsson/snapshot-angular`
-
-```ts
-import {
-  SnapshotNavListComponent,
-  provideSnapshot,
-  injectSnapshotCapture,
-  type NavItem,
-} from '@anton-gustafsson/snapshot-angular';
-```
-
-A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>`, built on signal
-inputs/outputs (`items`, `variant`, `variantKey`, `overlayTint`, `textOverlayOpacity`,
-`imageOverlayOpacity`, `overlayBlur`, `labelPosition`, `editable`, `scrollable`, `(select)`,
-`(edit)`) — Angular-idiomatic bindings instead of raw attributes/DOM events, zoneless-safe.
-
-- `provideSnapshot(config?)` — registers a configured `SnapshotService` under `SNAPSHOT_SERVICE` for
-  this injector (root, or a lazy route's providers) and `close()`s it on destroy. The component
-  injects it, so `[snapshotService]` is an override, not a requirement.
-- `injectSnapshotCapture()` — `(el, id, opts?) => Promise<string | null>`; ticks, waits a frame,
-  re-checks the element, and resolves `null` instead of throwing.
-- The package re-exports the core public surface, so a consumer imports from one package.
-
-Peer requirement: `@angular/core >= 19`.

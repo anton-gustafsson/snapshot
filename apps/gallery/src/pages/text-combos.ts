@@ -21,32 +21,32 @@ const COMBOS: Combo[] = [
   {
     caption: 'label only',
     items: [withDescription(DASHBOARDS[0])],
-    attrs: { variant: 'list' },
+    attrs: {},
   },
   {
     caption: 'label + description',
     items: [withDescription(DASHBOARDS[1], 'Stock levels across every warehouse')],
-    attrs: { variant: 'list' },
+    attrs: {},
   },
   {
     caption: 'label + long description (truncates)',
     items: [withDescription(DASHBOARDS[2], LONG_DESCRIPTION)],
-    attrs: { variant: 'list' },
+    attrs: {},
   },
   {
     caption: 'editable (hover for the edit button)',
     items: [withDescription(DASHBOARDS[3], 'Fleet health and throughput')],
-    attrs: { variant: 'list', editable: '' },
+    attrs: { editable: '' },
   },
   {
-    caption: 'tile + description',
+    caption: 'edit button position: meta',
     items: [withDescription(DASHBOARDS[4], 'Regional forecast widgets')],
-    attrs: { variant: 'tile' },
+    attrs: { editable: '', 'edit-button-position': 'meta' },
   },
   {
-    caption: 'tile + description + editable',
-    items: [withDescription(DASHBOARDS[5], 'New signups this week')],
-    attrs: { variant: 'tile', editable: '' },
+    caption: 'edit button position: meta + long description',
+    items: [withDescription(DASHBOARDS[5], LONG_DESCRIPTION)],
+    attrs: { editable: '', 'edit-button-position': 'meta' },
   },
 ];
 
@@ -54,7 +54,7 @@ export function render(container: HTMLElement) {
   pageHeader(
     container,
     'Text & edit',
-    'Combinations of <code>description</code> and <code>editable</code> across variants. ' +
+    'Combinations of <code>description</code> and <code>editable</code>. ' +
       'These cards aren\'t wired to a dashboard route — this page is about the text and the edit button, not navigation. ' +
       'Editing fires <code>nav-edit</code> instead of <code>nav-select</code>; nothing here listens for it beyond a console log.',
   );

@@ -24,7 +24,7 @@ export class SnapshotDetachedElementError extends SnapshotError {
 export class SnapshotRenderError extends SnapshotError {
   constructor(
     readonly id: string,
-    readonly cause: unknown,
+    override readonly cause: unknown,
   ) {
     super(
       `SnapshotService: html2canvas failed while capturing "${id}": ` +

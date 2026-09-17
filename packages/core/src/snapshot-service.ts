@@ -1,6 +1,7 @@
 import type { EncodeOptions } from './encode';
 import { encodeSnapshot } from './encode';
 import { SnapshotDetachedElementError, SnapshotRenderError, SnapshotTaintedCanvasError } from './errors';
+import { neutralizeOklchColors } from './neutralize-oklch';
 import type { SnapshotKey, SnapshotStorage } from './snapshot-storage';
 import { IndexedDbSnapshotStorage } from './snapshot-storage';
 
@@ -47,16 +48,55 @@ export interface CaptureOptions extends VariantOptions {
    * (and the clone of `el`) it's about to render, before it renders it. The
    * escape hatch for anything that needs to touch the clone specifically. A
    * returned promise is awaited.
-   *
-   * For colors specifically, prefer `neutralizeOklchColors` called on the
-   * *live* document before `capture()` (see its own docs) — html2canvas
-   * clones the whole document, not just `el`, so a fix scoped to `element`
-   * here can still miss a color a descendant inherits from outside it.
    */
   onclone?: (document: Document, element: HTMLElement) => void | Promise<void>;
+  /**
+   * Target output size in CSS px. Required to use `fit`; ignored otherwise.
+   */
+  width?: number;
+  height?: number;
+  /**
+   * How to fit `el`'s content into `width`×`height`:
+   * - `'contain'` — scale to fit entirely inside the box, letterboxed (filled
+   *   with `background`) if the aspect ratio doesn't match.
+   * - `'cover'` — scale to fill the box, cropping the overflow, centered.
+   *   Upscales content smaller than the target — this is a thumbnail, not a
+   *   lossless copy.
+   *
+   * Implemented by cloning `el` off-screen into a `width`×`height` frame and
+   * capturing that instead, so it works the same for any caller — no
+   * framework-specific lifetime handling. `contentCrop` defaults to `false`
+   * whenever `fit` is set, since the frame is already the exact requested
+   * size.
+   */
+  fit?: 'contain' | 'cover';
+  /** Fill color behind letterboxing or undersized content. Defaults to html2canvas's own default (white). */
+  background?: string;
+  /**
+   * Every capture crops to the bounding box of `el`'s visible children (see
+   * `CONTENT_PADDING`), so a container much bigger than its content doesn't
+   * capture as mostly empty space. Pass `false` to capture `el` at its own
+   * full size instead — needed for exact, pre-sized output (`fit` does this
+   * automatically).
+   */
+  contentCrop?: boolean;
+  /**
+   * Rewrites resolved `oklch()`/`oklab()` colors (anywhere in the document,
+   * not just `el`) to `hsl()` for the duration of the capture, then restores
+   * them. html2canvas can't parse either function, and `getComputedStyle`
+   * resolves a growing share of ordinary CSS to one of them regardless of
+   * how the color was authored — Tailwind v4's default palette included.
+   * Off by default: it's a full-document style walk plus an on-demand import
+   * of `colorjs.io`, so only pay for it on a page that actually hits this.
+   */
+  neutralizeColors?: boolean;
 }
 
-const CONTENT_PADDING = 16;
+/**
+ * The padding (in CSS px) applied around the bounding box of `el`'s visible
+ * children when the default content-crop runs — see `CaptureOptions.contentCrop`.
+ */
+export const CONTENT_PADDING = 16;
 const VARIANT_SEPARATOR = '@';
 
 // Tracks keyPrefixes already claimed by a live SnapshotService instance, so
@@ -104,6 +144,72 @@ function getContentBounds(el: HTMLElement) {
   const height = Math.min(full.height - y, maxY - minY + CONTENT_PADDING * 2);
   if (width <= 0 || height <= 0) return full;
   return { x, y, width, height };
+}
+
+/**
+ * Scale + centered-crop-offset for fitting a `natural` box into a `target`
+ * box. `'cover'` uses `Math.max` (fills the target, overflow gets cropped,
+ * offsets can go negative to center that overflow); `'contain'` uses
+ * `Math.min` (fits entirely inside, offsets are never negative — the
+ * shortfall is left for the caller to fill as letterboxing).
+ */
+export function computeFit(
+  natural: { width: number; height: number },
+  target: { width: number; height: number },
+  fit: 'contain' | 'cover',
+) {
+  const scale =
+    fit === 'cover'
+      ? Math.max(target.width / natural.width, target.height / natural.height)
+      : Math.min(target.width / natural.width, target.height / natural.height);
+  const scaledWidth = natural.width * scale;
+  const scaledHeight = natural.height * scale;
+  return {
+    scale,
+    offsetX: (scaledWidth - target.width) / 2,
+    offsetY: (scaledHeight - target.height) / 2,
+  };
+}
+
+/**
+ * Clones `el` into an off-screen `width`×`height` frame, scaled per `fit`
+ * and centered. Returns the frame (to capture instead of `el`) and a cleanup
+ * that removes it from the document — always call it, capture or not.
+ */
+function buildFitFrame(
+  el: HTMLElement,
+  width: number,
+  height: number,
+  fit: 'contain' | 'cover',
+  background?: string,
+): { frame: HTMLElement; cleanup: () => void } {
+  const naturalWidth = el.scrollWidth;
+  const naturalHeight = el.scrollHeight;
+
+  const frame = document.createElement('div');
+  frame.style.position = 'fixed';
+  frame.style.top = '0';
+  frame.style.left = '-99999px';
+  frame.style.width = `${width}px`;
+  frame.style.height = `${height}px`;
+  frame.style.overflow = 'hidden';
+  if (background) frame.style.background = background;
+
+  if (naturalWidth > 0 && naturalHeight > 0) {
+    const { scale, offsetX, offsetY } = computeFit({ width: naturalWidth, height: naturalHeight }, { width, height }, fit);
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.position = 'absolute';
+    clone.style.top = `${-offsetY}px`;
+    clone.style.left = `${-offsetX}px`;
+    clone.style.transformOrigin = 'top left';
+    clone.style.transform = `scale(${scale})`;
+    clone.style.width = `${naturalWidth}px`;
+    clone.style.height = `${naturalHeight}px`;
+    frame.appendChild(clone);
+  }
+
+  document.body.appendChild(frame);
+  return { frame, cleanup: () => frame.remove() };
 }
 
 export class SnapshotService {
@@ -200,14 +306,31 @@ export class SnapshotService {
     // storing a blank thumbnail over a good one.
     if (!el.isConnected) throw new SnapshotDetachedElementError(key.id);
 
-    const crop = getContentBounds(el);
+    const useFit = opts.width !== undefined && opts.height !== undefined && opts.fit !== undefined;
+    const fitFrame = useFit
+      ? buildFitFrame(el, opts.width as number, opts.height as number, opts.fit as 'contain' | 'cover', opts.background)
+      : undefined;
+    const target = fitFrame?.frame ?? el;
+    // `fit` already produced an exactly-sized frame — the default content-crop
+    // would only fight that (see CaptureOptions.contentCrop), so it's off by
+    // default here unless the caller explicitly asks for it back.
+    const contentCrop = opts.contentCrop ?? !useFit;
+    const crop = contentCrop
+      ? getContentBounds(target)
+      : useFit
+        // Known exactly — no need to round-trip through layout (`clientWidth`)
+        // for the one size `buildFitFrame` was already asked to produce.
+        ? { x: 0, y: 0, width: opts.width as number, height: opts.height as number }
+        : { x: 0, y: 0, width: target.clientWidth, height: target.clientHeight };
+
+    const restoreColors = opts.neutralizeColors ? await neutralizeOklchColors(document.documentElement) : undefined;
     // Imported on demand so `import '@anton-gustafsson/snapshot-core'` doesn't
     // pull a DOM-only dependency into a Node/SSR/Jest process that only wants
     // the types or a storage.
     const { default: html2canvas } = await import('html2canvas');
     let canvas: HTMLCanvasElement;
     try {
-      canvas = await html2canvas(el, {
+      canvas = await html2canvas(target, {
         scale: opts.scale ?? this.scale,
         logging: false,
         useCORS: true,
@@ -220,6 +343,9 @@ export class SnapshotService {
     } catch (err) {
       // errors.ts documents every rejection from this library as a SnapshotError.
       throw new SnapshotRenderError(key.id, err);
+    } finally {
+      restoreColors?.();
+      fitFrame?.cleanup();
     }
     const raw = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new SnapshotTaintedCanvasError(key.id))), 'image/png'),

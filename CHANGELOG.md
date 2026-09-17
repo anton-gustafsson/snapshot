@@ -11,24 +11,53 @@ version. Pre-1.0, so breaking changes ship with a migration note instead of a de
   document right before it's rendered, for anything that needs to touch the clone specifically
   rather than the live element (html2canvas re-resolves styles on the clone, so a live-DOM mutation
   made just before `capture()` isn't guaranteed to still apply by render time).
-- **`neutralizeOklchColors(root)`** — html2canvas can't parse `oklch()`/`oklab()`, which
-  `getComputedStyle` now resolves a growing share of real-world CSS to (any app on a palette
-  defined in OKLCH — Tailwind v4's own default colors included — hits this, regardless of how the
-  color was originally authored). Walks a subtree and pins every resolved color as a plain inline
-  `hsl()`, `!important`. Also neutralizes `transition`/`animation` first — writing a new color is
-  itself a style change, so on a transitionable element it can trigger one, and a read straight
-  after lands mid-transition (Chrome interpolates color transitions through oklab by default) rather
-  than on the value just written; without this the symptom looks identical to the fix having done
-  nothing at all. Returns a restore callback. `colorjs.io` is imported on demand, so a consumer that
-  never calls this pays nothing for it in their initial bundle.
-- **`waitForCanvasesToPaint(root, maxFrames?)`** — a `<canvas>`-based chart typically paints through
-  its own `ResizeObserver`/`requestAnimationFrame` cycle, decoupled from any framework's change
-  detection; `injectSnapshotCapture()`'s tick-plus-one-frame wait can still race a chart's own
-  pending redraw, and html2canvas only ever copies whatever's currently in the canvas's pixel
-  buffer — losing that race silently produces a capture with a blank rectangle where the chart
-  should be, no error. Polls every canvas under `root` until each has non-transparent pixel data or
-  `maxFrames` is exhausted. Best-effort by design: a canvas still blank after `maxFrames` is left as
-  is rather than blocking navigation indefinitely.
+- **`CaptureOptions.neutralizeColors`** — html2canvas can't parse `oklch()`/`oklab()`, which
+  `getComputedStyle` now resolves a growing share of real-world CSS to (any app on a palette defined
+  in OKLCH — Tailwind v4's own default colors included — hits this, regardless of how the color was
+  originally authored). Set to rewrite every resolved color on the page to a plain `hsl()` for the
+  duration of the capture (colors mid-CSS-transition included — Chrome resolves those through oklab
+  too) and restore it after. Off by default: it's a full-document style walk plus an on-demand import
+  of `colorjs.io`, so only pay for it on a page that actually hits this.
+- **`CaptureOptions.width`/`height`/`fit`/`background`** — capture `el` into an exact, pre-sized
+  thumbnail regardless of its own shape. `fit: 'cover'` scales to fill and crops the overflow,
+  centered (upscaling undersized content); `fit: 'contain'` scales to fit entirely inside, letterboxed
+  with `background`. Implemented by cloning `el` off-screen into a `width`×`height` frame and
+  capturing that — no framework-specific lifetime handling needed.
+- **`CaptureOptions.contentCrop`** — every capture previously cropped to the bounding box of `el`'s
+  visible children unconditionally, with no way to see or override it — reasonable for the library's
+  normal case (an existing UI element with blank chrome around it), but silently fought any caller
+  building an exact-size container on purpose. Pass `false` to capture `el` at its own full size
+  instead. Defaults to `false` automatically once `fit` is set, since the frame `fit` produces is
+  already the exact requested size.
+- **`CONTENT_PADDING`** — the padding (in CSS px) the default content-crop applies, now exported
+  instead of a caller having to hardcode `16` and hope it stays in sync.
+- **`injectDetachedCapture()`** (Angular) — same contract as `injectSnapshotCapture()`, for when `el`
+  isn't guaranteed to survive the whole capture (typically an un-awaited `canDeactivate` capture).
+  Clones `el` onto a detached, off-screen node first, so the capture's lifetime is owned by the call
+  instead of by whatever destroys the original view.
+
+### Changed
+
+- `neutralizeOklchColors()` is no longer exported — it was the right *fix*, but the wrong *shape*: an
+  extra function a caller had to know existed, import, and sequence correctly around `capture()` by
+  hand. That's now `CaptureOptions.neutralizeColors` instead — same behavior, wired up internally by
+  `capture()` itself.
+
+### Removed
+
+- `waitForCanvasesToPaint()` (and the `CaptureOptions.waitForCanvases` option it briefly had in this
+  same unreleased cycle) — canvas-chart captures are a narrow case, and the rAF-polling workaround is
+  simple enough for a caller who actually hits it to write themselves rather than carrying it as
+  library surface for everyone else.
+- `<snapshot-nav-list>`'s `tile` and `list` variants, and every property that only existed for them:
+  `variant`, `overlay-tint`, `text-overlay-opacity`, `image-overlay-opacity`, `overlay-blur`,
+  `label-position` (and the `'icon-only'` legacy alias for `tile`). The component now always renders
+  the `card` layout — the only one this library's consumers actually use — instead of carrying three
+  layouts' worth of CSS and properties for two nobody was using. `--snapshot-nav-list-tile-width`,
+  `-tile-height`, `-overlay-margin`, and `-overlay-radius` go with them; `--snapshot-nav-list-gap` is
+  replaced by `--snapshot-nav-list-card-gap` (the card grid's own gap var, previously namespaced
+  separately from the generic one). `edit-button-position`, `edit-icon`, `editable`, `variant-key`,
+  and `scrollable` are unaffected — they apply to the card layout the same as before.
 
 ## 0.4.0 — consumer-driven API pass
 

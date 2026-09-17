@@ -6,12 +6,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -k -n widgets,docs,gallery -c magenta,cyan,yellow \"npm run start -w apps/demo-angular-widgets\" \"npm run dev -w apps/docs\" \"npm run dev -w apps/gallery\"",
-    "dev:widgets": "npm run start -w apps/demo-angular-widgets",
+    "dev": "concurrently -k -n docs,gallery -c cyan,yellow \"npm run dev -w apps/docs\" \"npm run dev -w apps/gallery\"",
     "dev:docs": "npm run dev -w apps/docs",
     "dev:gallery": "npm run dev -w apps/gallery",
-    "build": "npm run build -w apps/demo-angular-widgets",
-    "build:packages": "npm run build -w packages/core && npm run build -w packages/angular",
+    "build:packages": "npm run build -w packages/core",
     "test": "npm run test -w packages/core",
     "test:e2e": "start-server-and-test dev:gallery http://localhost:3200 \"cypress run\"",
     "test:e2e:open": "start-server-and-test dev:gallery http://localhost:3200 \"cypress open\"",

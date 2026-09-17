@@ -92,13 +92,6 @@ describe('<snapshot-nav-list>', () => {
     expect(el.shadowRoot!.querySelector<HTMLImageElement>('img.thumb')?.getAttribute('src')).toBe('url:light-one');
   });
 
-  it('normalises the legacy icon-only variant to tile', async () => {
-    const { el } = await mount([{ id: 'a', label: 'A' }], { variant: 'icon-only' });
-
-    expect(el.variant).toBe('tile');
-    expect(el.getAttribute('variant')).toBe('tile');
-  });
-
   it('shows the edit button per item, overriding the component-wide flag', async () => {
     const { el } = await mount(
       [
