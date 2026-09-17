@@ -1,6 +1,5 @@
 import { LitElement, html, css } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { snapshotService as defaultSnapshotService } from './snapshot-service';
 import type { SnapshotService } from './snapshot-service';
@@ -24,19 +23,15 @@ function isMarkupIcon(icon: string): boolean {
   return icon.trimStart().startsWith('<');
 }
 
-/** `'icon-only'` is the old name for `'tile'`; it still works and normalises to `'tile'`. */
-export type SnapshotNavListVariant = 'list' | 'tile' | 'card' | 'icon-only';
-
 /** `overlay` floats the edit button over the thumbnail (top-right, reveals on hover); `meta` pins it to the right edge of the title's line (description below), always visible. */
 export type SnapshotNavListEditButtonPosition = 'overlay' | 'meta';
 
 const DEFAULT_EDIT_ICON = '✎';
 
 /**
- * Visual identity: a contact sheet. Every tile is a "frame" — numbered like a strip
- * of negatives — because that's literally what a snapshot thumbnail is. All colors
- * come from CSS custom properties (themeable) with sensible fallbacks derived from
- * `currentColor`, so an unstyled host still looks intentional.
+ * A grid of preview cards: a contained (never-cropped) screenshot above real
+ * title/description text below it — the text never sits on top of the
+ * image, so it needs no overlay tint to stay legible.
  */
 export class SnapshotNavList extends LitElement {
   static override styles = css`
@@ -59,66 +54,48 @@ export class SnapshotNavList extends LitElement {
       list-style: none;
       margin: 0;
       padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: var(--snapshot-nav-list-gap, 0.3rem);
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--snapshot-nav-list-card-min-width, 220px), 1fr));
+      gap: var(--snapshot-nav-list-card-gap, 1.25rem);
     }
     li {
       display: flex;
-      align-items: center;
-      gap: 0.7rem;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
       cursor: pointer;
-      padding: 0.45rem 0.55rem;
+      padding: var(--snapshot-nav-list-card-padding, 0.5rem);
       border-radius: var(--snapshot-nav-list-radius, 10px);
+      background: var(--snapshot-nav-list-card-bg, transparent);
+      border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+      box-shadow: none;
+      transition:
+        box-shadow var(--snapshot-nav-list-card-transition-dur, 0.15s) ease,
+        border-color var(--snapshot-nav-list-card-transition-dur, 0.15s) ease;
     }
     li:hover,
     li:focus-visible {
-      background: color-mix(in srgb, currentColor 7%, transparent);
+      background: var(--snapshot-nav-list-card-bg, transparent);
+      box-shadow: var(--snapshot-nav-list-card-shadow, 0 2px 8px color-mix(in srgb, currentColor 18%, transparent));
+      border-color: color-mix(in srgb, currentColor 22%, transparent);
       outline: none;
     }
-    li:focus-visible .thumb-wrap {
-      outline: 2px solid var(--frame-accent);
-      outline-offset: 2px;
+    li:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--frame-accent) 55%, transparent);
     }
 
     .thumb-wrap {
       position: relative;
-      width: 160px;
-      height: 100px;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 2 / 1;
       border-radius: var(--snapshot-nav-list-radius-sm, 7px);
-      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
+      background: color-mix(in srgb, currentColor 4%, transparent);
+      display: grid;
+      place-items: center;
       overflow: hidden;
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 16%, transparent);
-    }
-    /* signature: registration-mark corners, like a photo mount */
-    .thumb-wrap::before,
-    .thumb-wrap::after {
-      content: '';
-      position: absolute;
-      width: 9px;
-      height: 9px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-      z-index: 2;
-    }
-    .thumb-wrap::before {
-      top: 4px;
-      left: 4px;
-      border-top: 2px solid var(--frame-accent);
-      border-left: 2px solid var(--frame-accent);
-    }
-    .thumb-wrap::after {
-      bottom: 4px;
-      right: 4px;
-      border-bottom: 2px solid var(--frame-accent);
-      border-right: 2px solid var(--frame-accent);
-    }
-    li:hover .thumb-wrap::before,
-    li:hover .thumb-wrap::after,
-    li:focus-visible .thumb-wrap::before,
-    li:focus-visible .thumb-wrap::after {
-      opacity: 1;
     }
 
     .thumb {
@@ -127,7 +104,8 @@ export class SnapshotNavList extends LitElement {
       display: block;
     }
     img.thumb {
-      object-fit: cover;
+      /* contain, not cover — the whole preview stays readable, nothing cropped */
+      object-fit: contain;
       object-position: center;
       background: transparent;
     }
@@ -180,41 +158,27 @@ export class SnapshotNavList extends LitElement {
       }
     }
 
-    /* independent from .meta's tint — image-overlay-opacity defaults to 0 so the image stays clear (blur only) */
-    .image-overlay {
-      position: absolute;
-      inset: 0;
-      background: var(--overlay-bg, transparent);
-      backdrop-filter: blur(var(--overlay-blur, 0px));
-      -webkit-backdrop-filter: blur(var(--overlay-blur, 0px));
-      pointer-events: none;
-    }
-    /* the overlay exists so a tile's overlaid title stays legible — list
-       variant shows the label beside the thumb, not on top of it, so the
-       tint has nothing to do there. */
-    :host(:not([variant='tile'])) .image-overlay {
-      display: none;
-    }
-
     .meta {
       display: flex;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.25rem;
       min-width: 0;
+      padding: 0.75rem 0.5rem 0.5rem;
     }
     .label {
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
       color: inherit;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 1rem;
     }
     .description {
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
       color: color-mix(in srgb, currentColor 60%, transparent);
-      font-size: 0.75rem;
+      font-size: 0.8125rem;
     }
 
     .edit-button {
@@ -257,18 +221,15 @@ export class SnapshotNavList extends LitElement {
       fill: currentColor;
     }
 
-    /* Transparent by default (display: contents) so the existing per-variant
-       .label/.meta rules — including icon-only's absolute caption strip —
-       keep applying unchanged; it only becomes a real row when the edit
-       button moves in beside the title. */
+    /* Transparent by default (display: contents) so .label/.meta keep applying
+       unchanged; it only becomes a real row when the edit button moves in
+       beside the title. */
     .label-row {
       display: contents;
     }
     /* edit-button-position="meta": button on the title's line, description
-       still on its own line underneath. Not offered for icon-only, whose
-       .meta is an absolutely positioned overlay strip — the overlay button is
-       already the right place there. */
-    :host([edit-button-position='meta']:not([variant='icon-only'])) .label-row {
+       still on its own line underneath. */
+    :host([edit-button-position='meta']) .label-row {
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -277,11 +238,11 @@ export class SnapshotNavList extends LitElement {
     /* the title takes the whole row so the button lands on the card's right
        edge, still on the title's own line (the description sits below it);
        min-width: 0 keeps a long title ellipsising instead of pushing out. */
-    :host([edit-button-position='meta']:not([variant='icon-only'])) .label {
+    :host([edit-button-position='meta']) .label {
       flex: 1;
       min-width: 0;
     }
-    :host([edit-button-position='meta']:not([variant='icon-only'])) .edit-button {
+    :host([edit-button-position='meta']) .edit-button {
       position: static;
       flex-shrink: 0;
       /* in-flow, over the host's own background: currentColor-derived instead
@@ -291,137 +252,12 @@ export class SnapshotNavList extends LitElement {
       color: inherit;
       opacity: 1;
     }
-    :host([edit-button-position='meta']:not([variant='icon-only'])) .edit-button:hover {
+    :host([edit-button-position='meta']) .edit-button:hover {
       background: color-mix(in srgb, currentColor 20%, transparent);
-    }
-
-    /* list: a compact thumb reads better in a narrow sidebar than the grid's 160x100 */
-    :host([variant='list']) .thumb-wrap {
-      width: 108px;
-      height: 68px;
-    }
-
-    /* tile: contact-sheet grid, caption strip pinned to the bottom of each frame */
-    :host([variant='tile']) ul {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-    }
-    :host([variant='tile']) li {
-      position: relative;
-      width: var(--snapshot-nav-list-tile-width, 160px);
-      height: var(--snapshot-nav-list-tile-height, 100px);
-      padding: 0;
-      overflow: hidden;
-    }
-    :host([variant='tile']) .thumb-wrap {
-      width: 100%;
-      height: 100%;
-      border-radius: var(--snapshot-nav-list-radius, 10px);
-    }
-    :host([variant='tile']) .meta {
-      position: absolute;
-      inset: auto 0 0 0;
-      margin: var(--snapshot-nav-list-overlay-margin, 0);
-      border-radius: var(--snapshot-nav-list-overlay-radius, 0);
-      align-items: flex-start;
-      gap: 0.15rem;
-      padding: 0.4rem 0.5rem;
-      color: var(--overlay-text, #fff);
-      background: var(--overlay-bg, transparent);
-      backdrop-filter: blur(var(--overlay-blur, 0px));
-      -webkit-backdrop-filter: blur(var(--overlay-blur, 0px));
-    }
-    :host([variant='tile']) .label {
-      white-space: normal;
-    }
-    :host([variant='tile']) .description {
-      color: color-mix(in srgb, var(--overlay-text, #fff) 75%, transparent);
-    }
-
-    /* label-position="center": title big and centered */
-    :host([variant='tile'][label-position='center']) .meta {
-      inset: 0;
-      align-items: center;
-      justify-content: center;
-      padding: 0.6rem;
-    }
-    :host([variant='tile'][label-position='center']) .label {
-      font-size: 1.15rem;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    /* card: a contained (never cropped) preview above real body text below it —
-       text never sits on top of the image, so unlike a tile it needs no
-       overlay tint to stay legible. Modeled on a typical "preview card"
-       pattern: framed shot, title + description underneath, shadow on hover. */
-    :host([variant='card']) ul {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(var(--snapshot-nav-list-card-min-width, 220px), 1fr));
-      gap: var(--snapshot-nav-list-card-gap, 1.25rem);
-    }
-    :host([variant='card']) li {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0;
-      padding: var(--snapshot-nav-list-card-padding, 0.5rem);
-      background: var(--snapshot-nav-list-card-bg, transparent);
-      border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
-      box-shadow: none;
-      transition:
-        box-shadow var(--snapshot-nav-list-card-transition-dur, 0.15s) ease,
-        border-color var(--snapshot-nav-list-card-transition-dur, 0.15s) ease;
-    }
-    :host([variant='card']) li:hover,
-    :host([variant='card']) li:focus-visible {
-      background: var(--snapshot-nav-list-card-bg, transparent);
-      box-shadow: var(--snapshot-nav-list-card-shadow, 0 2px 8px color-mix(in srgb, currentColor 18%, transparent));
-      border-color: color-mix(in srgb, currentColor 22%, transparent);
-    }
-    :host([variant='card']) li:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--frame-accent) 55%, transparent);
-    }
-    :host([variant='card']) li:focus-visible .thumb-wrap {
-      outline: none;
-    }
-    :host([variant='card']) .thumb-wrap {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 2 / 1;
-      border-radius: var(--snapshot-nav-list-radius-sm, 7px);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
-      background: color-mix(in srgb, currentColor 4%, transparent);
-      display: grid;
-      place-items: center;
-    }
-    :host([variant='card']) .thumb-wrap::before,
-    :host([variant='card']) .thumb-wrap::after {
-      display: none;
-    }
-    :host([variant='card']) img.thumb {
-      /* contain, not cover — the whole dashboard stays readable, nothing cropped */
-      object-fit: contain;
-    }
-    :host([variant='card']) .meta {
-      padding: 0.75rem 0.5rem 0.5rem;
-      gap: 0.25rem;
-    }
-    :host([variant='card']) .label {
-      white-space: normal;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    :host([variant='card']) .description {
-      white-space: normal;
-      font-size: 0.8125rem;
     }
   `;
 
   @property({ type: Array }) items: NavItem[] = [];
-  /** `card` by default — a framed preview with title/description underneath. `tile` is the compact contact-sheet grid, `list` a sidebar row. */
-  @property({ reflect: true }) variant: SnapshotNavListVariant = 'card';
   /**
    * Second dimension on every id — typically the active theme, so a light and a
    * dark capture of the same view are stored (and read) separately. Passed
@@ -431,21 +267,11 @@ export class SnapshotNavList extends LitElement {
   /** Lets the host itself scroll (see `--snapshot-nav-list-max-height`) instead of growing unbounded. */
   @property({ type: Boolean, reflect: true }) scrollable = false;
 
-  /** tile overlay: tint behind the title so it stays legible over any image. Transparent by default — opt into a scrim explicitly. */
-  @property({ attribute: 'overlay-tint' }) overlayTint: 'dark' | 'light' | 'none' = 'none';
-  /** caption background tint strength, 0-1 */
-  @property({ type: Number, attribute: 'text-overlay-opacity' }) textOverlayOpacity = 0.35;
-  /** image scrim tint strength, 0-1 — 0 keeps the image clear (blur only) */
-  @property({ type: Number, attribute: 'image-overlay-opacity' }) imageOverlayOpacity = 0;
-  /** backdrop blur behind the title, in px */
-  @property({ type: Number, attribute: 'overlay-blur' }) overlayBlur = 0;
-  /** tile only: 'bottom' is the caption strip (default), 'center' centers a larger title. */
-  @property({ reflect: true, attribute: 'label-position' }) labelPosition: 'bottom' | 'center' = 'bottom';
   /** Defaults to the shared singleton — set your own instance (e.g. a namespaced or custom-storage SnapshotService) per <snapshot-nav-list> if needed. */
   @property({ attribute: false }) snapshotService: SnapshotService = defaultSnapshotService;
   /** Shows an edit button per card. Off by default — clicking it fires `nav-edit` instead of `nav-select`; the host decides what "edit" means (e.g. open its own dialog component). Overridable per row via `NavItem.editable`. */
   @property({ type: Boolean }) editable = false;
-  /** Where the edit button sits: `overlay` (default) floats it over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. Ignored by the icon-only variant, whose caption is itself an overlay. */
+  /** Where the edit button sits: `overlay` (default) floats it over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. */
   @property({ reflect: true, attribute: 'edit-button-position' })
   editButtonPosition: SnapshotNavListEditButtonPosition = 'overlay';
   /** Edit button glyph. Same convention as `NavItem.icon`: a plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). */
@@ -508,11 +334,6 @@ export class SnapshotNavList extends LitElement {
   // update instead of triggering Lit's "update scheduled from updated()"
   // warning that came from doing this same flip inside updated().
   override willUpdate(changed: Map<string, unknown>) {
-    // 'icon-only' is the pre-0.3 name for 'tile'. Normalising here (rather
-    // than in a setter) keeps the reflected attribute — and therefore every
-    // CSS selector — on the one canonical value.
-    if (this.variant === 'icon-only') this.variant = 'tile';
-
     // A variant-key switch (e.g. light -> dark) invalidates every thumbnail:
     // they're separate snapshots under separate keys.
     if (changed.has('variantKey')) this.thumbs.clear();
@@ -572,29 +393,6 @@ export class SnapshotNavList extends LitElement {
     }
   }
 
-  /** image scrim: blur + its own (usually 0) tint strength — independent of the caption's. */
-  private get imageOverlayStyle() {
-    const blur = `${this.overlayBlur}px`;
-    if (this.overlayTint === 'none' || this.imageOverlayOpacity === 0) {
-      return { '--overlay-blur': blur };
-    }
-    const tintColor = this.overlayTint === 'light' ? '#fff' : '#000';
-    const bg = `color-mix(in srgb, ${tintColor} ${Math.round(this.imageOverlayOpacity * 100)}%, transparent)`;
-    return { '--overlay-bg': bg, '--overlay-blur': blur };
-  }
-
-  /** caption background: tint (to pop the text) + the same blur. */
-  private get metaStyle() {
-    const blur = `${this.overlayBlur}px`;
-    if (this.overlayTint === 'none') {
-      return { '--overlay-bg': 'transparent', '--overlay-text': 'inherit', '--overlay-blur': blur };
-    }
-    const tintColor = this.overlayTint === 'light' ? '#fff' : '#000';
-    const bg = `color-mix(in srgb, ${tintColor} ${Math.round(this.textOverlayOpacity * 100)}%, transparent)`;
-    const text = this.overlayTint === 'light' ? '#111' : '#fff';
-    return { '--overlay-bg': bg, '--overlay-text': text, '--overlay-blur': blur };
-  }
-
   // Both events carry the whole item — including `data` — so a handler never
   // has to look the item back up by id.
   private select(item: NavItem) {
@@ -624,11 +422,7 @@ export class SnapshotNavList extends LitElement {
   }
 
   override render() {
-    const imageOverlayStyle = this.imageOverlayStyle;
-    const metaStyle = this.metaStyle;
-    // icon-only's caption is itself an overlay strip on the image, so there's
-    // no in-flow text row to put the button in — fall back to the overlay.
-    const editInMeta = this.editButtonPosition === 'meta' && this.variant !== 'icon-only';
+    const editInMeta = this.editButtonPosition === 'meta';
     return html`
       <ul role="listbox">
         ${this.items.map(
@@ -652,10 +446,9 @@ export class SnapshotNavList extends LitElement {
                           >${item.icon ? (isMarkupIcon(item.icon) ? unsafeHTML(item.icon) : item.icon) : ''}</span
                         >
                       </div>`}
-                <div class="image-overlay" part="overlay" style=${styleMap(imageOverlayStyle)}></div>
                 ${this.isEditable(item) && !editInMeta ? this.renderEditButton(item) : ''}
               </div>
-              <div class="meta" part="meta" style=${styleMap(metaStyle)}>
+              <div class="meta" part="meta">
                 <div class="label-row" part="label-row">
                   <span class="label" part="label">${item.label}</span>
                   ${this.isEditable(item) && editInMeta ? this.renderEditButton(item) : ''}

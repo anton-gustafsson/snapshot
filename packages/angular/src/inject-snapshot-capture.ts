@@ -18,6 +18,12 @@ import { SNAPSHOT_SERVICE } from './provide-snapshot';
  * router holds a `PendingTasks` entry for the entire navigation, so
  * `whenStable()` doesn't resolve until the view is already destroyed — and
  * html2canvas then fails with "Unable to find element in cloned iframe".
+ *
+ * That failure mode can still happen here too, if something else destroys
+ * `el` between the `tick()`/frame wait and `service.capture()` resolving —
+ * this only re-checks once, right before handing off. Use
+ * `injectDetachedCapture()` instead when `el` isn't guaranteed to outlive
+ * the whole capture.
  */
 export function injectSnapshotCapture() {
   const appRef = inject(ApplicationRef);

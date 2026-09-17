@@ -45,11 +45,11 @@ export function render(container: HTMLElement) {
   pageHeader(
     container,
     'Dashboard preview card',
-    'The library\'s own <code>variant="card"</code>: a contained (never-cropped) screenshot with real title/description text below it — never overlaid, so it needs no tint. Colors come from <code>currentColor</code>, the same as every other variant, so it already follows light/dark automatically.',
+    'The library\'s own (and only) layout: a contained (never-cropped) screenshot with real title/description text below it — never overlaid, so it needs no tint. Colors come from <code>currentColor</code>, so it already follows light/dark automatically.',
   );
 
   sectionTitle(container, 'Light & dark, side by side');
-  lightDarkPreview(container, CARDS.slice(0, 1), { variant: 'card' }, cardService);
+  lightDarkPreview(container, CARDS.slice(0, 1), {}, cardService);
 
   const note = document.createElement('p');
   note.className = 'dash-card-note';
@@ -57,7 +57,7 @@ export function render(container: HTMLElement) {
   container.append(note);
 
   sectionTitle(container, 'In a grid');
-  container.append(makeNavList(CARDS, { variant: 'card' }, cardService));
+  container.append(makeNavList(CARDS, {}, cardService));
 
   sectionTitle(
     container,
@@ -70,27 +70,29 @@ export function render(container: HTMLElement) {
       'and the third restyles the button through <code>::part(edit-button)</code>: no background, bigger icon.',
   );
 
+  const editPlacementRows: { caption: string; attrs: Record<string, string>; className?: string }[] = [
+    { caption: 'overlay (default)', attrs: { editable: '' } },
+    {
+      caption: 'meta + custom Material Symbols icon',
+      attrs: { editable: '', 'edit-button-position': 'meta', 'edit-icon': MORE_VERT_ICON },
+      className: 'dash-card-symbol-edit',
+    },
+    {
+      // Nothing library-side needed for this look — the button is exposed as
+      // ::part(edit-button), so a host can drop the chip background and scale
+      // the icon from its own stylesheet.
+      caption: 'no background + bigger icon (::part(edit-button))',
+      attrs: { editable: '', 'edit-button-position': 'meta', 'edit-icon': MORE_VERT_ICON },
+      className: 'dash-card-symbol-edit dash-card-bare-edit',
+    },
+  ];
+
   captionedRow(
     container,
-    [
-      { caption: 'overlay (default)', attrs: { variant: 'card', editable: '' }, className: undefined },
-      {
-        caption: 'meta + custom Material Symbols icon',
-        attrs: { variant: 'card', editable: '', 'edit-button-position': 'meta', 'edit-icon': MORE_VERT_ICON },
-        className: 'dash-card-symbol-edit',
-      },
-      {
-        // Nothing library-side needed for this look — the button is exposed as
-        // ::part(edit-button), so a host can drop the chip background and scale
-        // the icon from its own stylesheet.
-        caption: 'no background + bigger icon (::part(edit-button))',
-        attrs: { variant: 'card', editable: '', 'edit-button-position': 'meta', 'edit-icon': MORE_VERT_ICON },
-        className: 'dash-card-symbol-edit dash-card-bare-edit',
-      },
-    ] as const,
+    editPlacementRows,
     (entry) => entry.caption,
     (entry) => {
-      const list = makeNavList(CARDS.slice(0, 2), { ...entry.attrs }, cardService);
+      const list = makeNavList(CARDS.slice(0, 2), entry.attrs, cardService);
       if (entry.className) list.className = entry.className;
       list.addEventListener('nav-edit', ((e: CustomEvent<{ id: string }>) => {
         console.log(`nav-edit: ${e.detail.id}`);
@@ -102,11 +104,10 @@ export function render(container: HTMLElement) {
   sectionTitle(container, 'Markup');
   codeSnippet(
     container,
-    `<snapshot-nav-list variant="card"></snapshot-nav-list>
+    `<snapshot-nav-list></snapshot-nav-list>
 
 <!-- edit button beside the text instead of over the preview, with your own icon -->
 <snapshot-nav-list
-  variant="card"
   editable
   edit-button-position="meta"
   edit-icon='<span class="material-symbols-outlined">more_vert</span>'

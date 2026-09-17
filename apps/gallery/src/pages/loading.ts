@@ -18,14 +18,7 @@ export function render(container: HTMLElement) {
       'Click a card to open its dashboard; coming back captures a real snapshot (still behind the same delay).',
   );
 
-  const loadingNavList = makeClickableNavList(
-    LOADING_ITEMS,
-    { variant: 'tile' },
-    loadingService,
-    'loading',
-    path,
-    label,
-  );
+  const loadingNavList = makeClickableNavList(LOADING_ITEMS, {}, loadingService, 'loading', path, label);
 
   // invalidate()s each item's cached thumbnail (via the service, so the
   // nav-list's live-update subscription picks it up) and reassigns `items`

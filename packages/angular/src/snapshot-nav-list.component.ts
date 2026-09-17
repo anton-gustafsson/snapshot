@@ -15,7 +15,6 @@ import type {
   NavItem,
   SnapshotNavList,
   SnapshotNavListEditButtonPosition,
-  SnapshotNavListVariant,
   SnapshotService,
 } from '@anton-gustafsson/snapshot-core';
 import { SNAPSHOT_SERVICE } from './provide-snapshot';
@@ -43,13 +42,7 @@ import { SNAPSHOT_SERVICE } from './provide-snapshot';
   template: `<snapshot-nav-list
     #el
     [snapshotService]="service()"
-    [attr.variant]="variant()"
     [attr.variant-key]="variantKey()"
-    [attr.overlay-tint]="overlayTint()"
-    [attr.text-overlay-opacity]="textOverlayOpacity()"
-    [attr.image-overlay-opacity]="imageOverlayOpacity()"
-    [attr.overlay-blur]="overlayBlur()"
-    [attr.label-position]="labelPosition()"
     [attr.editable]="editable() ? '' : null"
     [attr.edit-button-position]="editButtonPosition()"
     [attr.edit-icon]="editIcon()"
@@ -60,18 +53,11 @@ import { SNAPSHOT_SERVICE } from './provide-snapshot';
 })
 export class SnapshotNavListComponent<T = unknown> {
   readonly items = input<NavItem<T>[]>([]);
-  readonly variant = input<SnapshotNavListVariant>('card');
   /** Second dimension on every id — typically the active theme, so light and dark captures stay separate. */
   readonly variantKey = input<string | undefined>(undefined);
-  readonly overlayTint = input<'dark' | 'light' | 'none'>('none');
-  readonly textOverlayOpacity = input(0.35);
-  readonly imageOverlayOpacity = input(0);
-  readonly overlayBlur = input(0);
-  /** 'bottom' is the caption strip (default); 'center' centers a larger title (tile variant only). */
-  readonly labelPosition = input<'bottom' | 'center'>('bottom');
   /** Shows a top-right edit button per card — clicking it fires `edit` instead of `select`. Overridable per row via `NavItem.editable`. */
   readonly editable = input(false);
-  /** `overlay` (default) floats the edit button over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. Ignored by the tile variant. */
+  /** `overlay` (default) floats the edit button over the thumbnail; `meta` pins it to the right edge of the title row, with the description below. */
   readonly editButtonPosition = input<SnapshotNavListEditButtonPosition>('overlay');
   /** Edit button glyph — plain text (e.g. an emoji), or markup (a string starting with `<`) to pass your own icon, e.g. `<svg>...</svg>`. */
   readonly editIcon = input('✎');

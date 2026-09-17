@@ -25,6 +25,7 @@
           <a href="#try-it">Try it</a>
           <a href="#reference">snapshot-nav-list</a>
           <a href="#frameworks">Frameworks</a>
+          <a href="/angular/">Angular</a>
           <a href="/examples/">Examples</a>
         </div>
       </nav>
@@ -150,7 +151,7 @@ export const snapshots = new SnapshotService({
         <h3>Storage recipes</h3>
         <p class="section-sub">
           Three common configurations. Live, working versions of all three are in the
-          <code>gallery</code> app — <code>/variants</code> etc. use the default, and
+          <code>gallery</code> app — <code>/dashboard-card</code> etc. use the default, and
           <code>/sqlite</code> / <code>/sqlite-only</code> cover the other two end to end.
         </p>
 
@@ -243,13 +244,10 @@ export const snapshots = new SnapshotService({
         <h4>Capturing safely in a framework</h4>
         <p class="section-sub">
           Capture the frame the user is about to leave, not the one that's already gone: flush pending
-          renders, wait one animation frame, then check the element is still attached. In Angular that
-          whole dance is <code>injectSnapshotCapture()</code>. Do <em>not</em> wait on
-          <code>whenStable()</code> inside a <code>canDeactivate</code> guard — the router holds a
-          pending task for the entire navigation, so it resolves only after the view is destroyed, and
-          html2canvas then fails with <em>"Unable to find element in cloned iframe"</em>. A detached
-          element rejects with <code>SnapshotDetachedElementError</code> rather than storing a blank
-          thumbnail over a good one.
+          renders, wait one animation frame, then check the element is still attached before calling
+          <code>capture()</code>. A detached element rejects with
+          <code>SnapshotDetachedElementError</code> rather than storing a blank thumbnail over a good
+          one.
         </p>
       </section>
 
@@ -281,16 +279,18 @@ export const snapshots = new SnapshotService({
           </thead>
           <tbody>
             <tr><td><code>items</code></td><td><code>NavItem&lt;T&gt;[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute. Each item is <code>{ id, label, icon?, description?, data?, editable? }</code>; <code>data</code> is your own payload, echoed back on every event.</td></tr>
-            <tr><td><code>variant</code></td><td><code>'card' | 'tile' | 'list'</code></td><td><code>'card'</code></td><td>A grid of cards with a contained (never-cropped) preview and the title/description below it; a grid of tiles with the title overlaid on top; or rows with the label beside a compact thumb. <code>'icon-only'</code> is the old name for <code>'tile'</code> and still works.</td></tr>
-            <tr><td><code>variant-key</code></td><td><code>string</code></td><td>—</td><td>Passed through to <code>get()</code> as <code>variant</code> — bind it to the active theme and each tile reads that theme's own capture.</td></tr>
+            <tr><td><code>variant-key</code></td><td><code>string</code></td><td>—</td><td>Passed through to <code>get()</code> as <code>variant</code> — bind it to the active theme and each card reads that theme's own capture.</td></tr>
             <tr><td><code>editable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Shows a per-card edit button that fires <code>nav-edit</code> instead of <code>nav-select</code>. <code>NavItem.editable</code> overrides it per row, for per-row rights.</td></tr>
+            <tr><td><code>edit-button-position</code></td><td><code>'overlay' | 'meta'</code></td><td><code>'overlay'</code></td><td><code>overlay</code> floats the button over the preview, revealed on hover; <code>meta</code> pins it to the right edge of the title line, always visible.</td></tr>
+            <tr><td><code>edit-icon</code></td><td><code>string</code></td><td><code>'✎'</code></td><td>A plain-text glyph, or markup — a string starting with <code>&lt;</code> renders as raw HTML/SVG.</td></tr>
             <tr><td><code>scrollable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>The host scrolls itself (pair with <code>--snapshot-nav-list-max-height</code>) instead of growing unbounded in a flex sidebar.</td></tr>
-            <tr><td><code>overlay-tint</code></td><td><code>'dark' | 'light' | 'none'</code></td><td><code>'none'</code></td><td>Tint color used by both scrims below.</td></tr>
-            <tr><td><code>text-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0.35</code></td><td>Caption background tint strength, so overlaid text stays legible.</td></tr>
-            <tr><td><code>image-overlay-opacity</code></td><td><code>number</code> (0–1)</td><td><code>0</code></td><td>Image scrim tint strength. Defaults to 0 so the image stays clear.</td></tr>
-            <tr><td><code>overlay-blur</code></td><td><code>number</code> (px)</td><td><code>0</code></td><td>Backdrop blur applied to both the image and the caption background.</td></tr>
           </tbody>
         </table>
+        <p class="section-sub">
+          One layout: a grid of cards with a contained (never-cropped) preview and the title/description
+          below it. Earlier versions offered <code>tile</code>/<code>list</code> variants with an overlay
+          tint — dropped to keep the component to the one layout this library's consumers actually use.
+        </p>
 
         <h3>Events</h3>
         <table>
@@ -311,12 +311,14 @@ export const snapshots = new SnapshotService({
           <tbody>
             <tr><td><code>--snapshot-nav-list-accent</code></td><td><code>#ff5a1f</code></td></tr>
             <tr><td><code>--snapshot-nav-list-font</code></td><td><code>inherit</code></td></tr>
-            <tr><td><code>--snapshot-nav-list-mono-font</code></td><td><code>ui-monospace, monospace</code></td></tr>
             <tr><td><code>--snapshot-nav-list-radius</code></td><td><code>10px</code></td></tr>
-            <tr><td><code>--snapshot-nav-list-radius-sm</code></td><td><code>7px</code></td></tr>
-            <tr><td><code>--snapshot-nav-list-gap</code></td><td><code>0.3rem</code></td></tr>
-            <tr><td><code>--snapshot-nav-list-overlay-margin</code></td><td><code>0</code> (tile caption strip)</td></tr>
-            <tr><td><code>--snapshot-nav-list-overlay-radius</code></td><td><code>0</code> (tile caption strip)</td></tr>
+            <tr><td><code>--snapshot-nav-list-radius-sm</code></td><td><code>7px</code> (thumbnail corners)</td></tr>
+            <tr><td><code>--snapshot-nav-list-card-min-width</code></td><td><code>220px</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-card-gap</code></td><td><code>1.25rem</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-card-padding</code></td><td><code>0.5rem</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-card-bg</code></td><td><code>transparent</code></td></tr>
+            <tr><td><code>--snapshot-nav-list-card-shadow</code></td><td>a soft <code>currentColor</code>-tinted shadow, on hover/focus</td></tr>
+            <tr><td><code>--snapshot-nav-list-card-transition-dur</code></td><td><code>0.15s</code></td></tr>
             <tr><td><code>--snapshot-nav-list-max-height</code></td><td><code>none</code> (with <code>scrollable</code>)</td></tr>
           </tbody>
         </table>
@@ -324,7 +326,7 @@ export const snapshots = new SnapshotService({
         <h3>CSS parts</h3>
         <p class="section-sub">
           Shadow DOM, so styling from outside goes through
-          <code>::part()</code>: <code>frame</code>, <code>thumb</code>, <code>overlay</code>,
+          <code>::part()</code>: <code>frame</code>, <code>thumb</code>,
           <code>meta</code>, <code>label</code>, <code>description</code>, <code>edit-button</code>.
         </p>
         <pre><code>snapshot-nav-list::part(frame) {
@@ -347,90 +349,13 @@ nav.addEventListener('nav-select', (e) => {
 document.body.append(nav);</code></pre>
 
         <h3>Angular</h3>
-        <pre><code>npm install @anton-gustafsson/snapshot-angular</code></pre>
-        <pre><code>// main.ts — one place to configure the service; nothing binds [snapshotService]
-import { provideSnapshot } from '@anton-gustafsson/snapshot-angular';
-
-bootstrapApplication(App, {
-  providers: [provideSnapshot({ keyPrefix: 'reports:', encode: { type: 'image/webp', maxEdge: 640 } })],
-});</code></pre>
-        <pre><code>import { SnapshotNavListComponent, injectSnapshotCapture, type NavItem } from '@anton-gustafsson/snapshot-angular';
-
-interface Report { owner: string }
-
-@Component({
-  selector: 'app-root',
-  imports: [SnapshotNavListComponent],
-  template: `
-    &lt;ngx-snapshot-nav-list
-      [items]="items"
-      [variantKey]="theme()"
-      (select)="onSelect($event)"
-      (edit)="onEdit($event)" /&gt;
-  `,
-})
-export class AppComponent {
-  // signal inputs/outputs, zoneless-safe, no [snapshotService] binding needed
-  private capture = injectSnapshotCapture();
-
-  items: NavItem&lt;Report&gt;[] = [
-    { id: 'sales', label: 'Sales', icon: '📈', editable: true, data: { owner: 'me' } },
-  ];
-
-  // the whole item arrives — no lookup by id
-  onSelect(item: NavItem&lt;Report&gt;) { /* ... */ }
-  onEdit(item: NavItem&lt;Report&gt;) { /* ... */ }
-
-  // ticks, waits a frame, re-checks the element; resolves null instead of throwing
-  save(el: HTMLElement, id: string) {
-    return this.capture(el, id, { variant: this.theme() });
-  }
-}</code></pre>
         <p class="section-sub">
-          The Angular package re-exports the core surface (<code>NavItem</code>,
-          <code>SnapshotService</code>, <code>CachedSnapshotStorage</code>, …), so a consumer imports
-          from one package. Peer requirement: <code>@angular/core &gt;= 19</code>.
+          <code>@anton-gustafsson/snapshot-angular</code> — a thin standalone wrapper, signal
+          inputs/outputs, `injectSnapshotCapture()`/`injectDetachedCapture()` for capturing around
+          navigation. See the <a href="/angular/">dedicated Angular page</a> for install, providers,
+          guards, and lazy-route scoping.
         </p>
 
-        <h4>Scoping the service (lazy routes)</h4>
-        <p class="section-sub">
-          <code>provideSnapshot()</code> returns <code>EnvironmentProviders</code> — it only works at an
-          <em>environment injector</em> location: <code>bootstrapApplication()</code>'s <code>providers</code>,
-          or a route's own <code>providers</code> array. Not a <code>@Component</code>'s
-          <code>providers</code> — that's an element injector, and Angular rejects
-          <code>makeEnvironmentProviders()</code> there.
-        </p>
-        <p class="section-sub">
-          Put it on a lazy route instead of the app root when a feature's snapshots (and its
-          <code>keyPrefix</code>) should live and die with that feature, not with the whole app:
-        </p>
-        <pre><code>// app.routes.ts
-import { Routes } from '@angular/router';
-import { provideSnapshot, CachedSnapshotStorage } from '@anton-gustafsson/snapshot-angular';
-
-export const routes: Routes = [
-  {
-    path: 'reports',
-    loadComponent: () => import('./reports/reports.component').then((m) => m.ReportsComponent),
-    providers: [
-      provideSnapshot({
-        keyPrefix: 'reports:',
-        storage: new CachedSnapshotStorage({ /* ... */ }),
-      }),
-    ],
-  },
-];</code></pre>
-        <p class="section-sub">
-          Created once, the first time the route loads. Destroyed — releasing the
-          <code>BroadcastChannel</code> and freeing the <code>keyPrefix</code> claim — when the route's
-          injector is destroyed (deactivated, and <code>RouteReuseStrategy</code> isn't keeping it
-          alive), so re-entering the route later constructs a fresh instance with no
-          "keyPrefix already in use" warning. Skip <code>provideSnapshot()</code> entirely and
-          <code>SNAPSHOT_SERVICE</code> falls back to the app-wide default
-          (<code>providedIn: 'root'</code>) — fine for a single feature, but without the
-          <code>keyPrefix</code> isolation and per-feature <code>encode</code>/<code>storage</code> a
-          lazy scope buys you.
-        </p>
       </section>
 
       <footer class="colophon">

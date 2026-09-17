@@ -24,8 +24,6 @@ const saveBtn = requireElement<HTMLButtonElement>('pg-save');
 const snapshotService = getDefaultSnapshotService();
 
 const navList = document.createElement('snapshot-nav-list');
-// `card` is the default now; the playground's sidebar wants the compact grid.
-navList.setAttribute('variant', 'tile');
 navList.items = items;
 navMount.append(navList);
 
