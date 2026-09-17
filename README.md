@@ -26,12 +26,13 @@ Capture works on any element, in any framework. Storage defaults to IndexedDB (b
 | Path | What it is |
 |---|---|
 | `packages/core` | `@anton-gustafsson/snapshot-core` — the service, storage interface, and `<snapshot-nav-list>` component |
-| `apps/docs` | Marketing/docs site |
+| `packages/angular` | `@anton-gustafsson/snapshot-angular` — thin Angular wrapper (`<ngx-snapshot-nav-list>`) around the same web component |
+| `apps/docs` | Marketing/docs site (Angular usage at [`/angular`](https://snapshot.moimob.com/angular/)) |
 | `apps/gallery` | Interactive demo gallery (theming, config builder, sqlite-backed storage example, etc.) |
 
 ## Publishing
 
-`.github/workflows/publish.yml` patch-bumps and publishes `@anton-gustafsson/snapshot-core` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
+`.github/workflows/publish.yml` patch-bumps and publishes `@anton-gustafsson/snapshot-core` and `@anton-gustafsson/snapshot-angular` to npm on every push to `master` that touches `packages/**`. Requires an `NPM_TOKEN` repo secret (an npm Automation token, or a granular token with "bypass 2FA" enabled).
 
 ## Deploy
 
@@ -165,7 +166,11 @@ same recipe over real SQLite via sql.js).
 ### Capturing safely in a framework
 
 Capture the frame the user is about to leave, not the one that's already gone: flush pending renders,
-wait one animation frame, then check the element is still attached before calling `capture()`.
+wait one animation frame, then check the element is still attached before calling `capture()`. In
+Angular that whole dance is `injectSnapshotCapture()` — see the Angular section below. Do **not** wait
+on `whenStable()` inside a `canDeactivate` guard — the router holds a pending task for the whole
+navigation, so it resolves only after the view is destroyed, and html2canvas then fails with
+*"Unable to find element in cloned iframe"*.
 
 ### Reliable captures on real-world CSS
 
@@ -219,3 +224,39 @@ instance); fully themeable via CSS custom properties.
 - `edit-button-position` — `'overlay'` (default, floats over the preview) or `'meta'` (pinned beside the title).
 - `scrollable` — the host scrolls itself, with `--snapshot-nav-list-max-height`.
 - `nav-select` / `nav-edit` — detail is the whole `NavItem<T>`, `data` payload included.
+
+### `@anton-gustafsson/snapshot-angular`
+
+```ts
+import {
+  SnapshotNavListComponent,
+  provideSnapshot,
+  injectSnapshotCapture,
+  injectDetachedCapture,
+  type NavItem,
+} from '@anton-gustafsson/snapshot-angular';
+```
+
+A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>`, built on signal
+inputs/outputs (`items`, `variantKey`, `editable`, `editButtonPosition`, `editIcon`, `scrollable`,
+`(select)`, `(edit)`) — Angular-idiomatic bindings instead of raw attributes/DOM events, zoneless-safe.
+
+- `provideSnapshot(config?)` — registers a configured `SnapshotService` under `SNAPSHOT_SERVICE` for
+  this injector (root, or a lazy route's providers) and `close()`s it on destroy. The component
+  injects it, so `[snapshotService]` is an override, not a requirement.
+- `injectSnapshotCapture()` — `(el, id, opts?) => Promise<string | null>`; ticks, waits a frame,
+  re-checks the element, and resolves `null` instead of throwing.
+- `injectDetachedCapture()` — same signature and contract, for when `el` isn't guaranteed to survive
+  the whole capture (typically a `canDeactivate` guard that fires the capture without awaiting it, so
+  navigation doesn't feel gated on a thumbnail). Clones `el` onto a detached, off-screen node first,
+  so the capture's lifetime is owned by the call, not by whatever destroys the original view:
+  ```ts
+  export const boardSnapshotGuard: CanDeactivateFn<BoardDetailPage> = (component) => {
+    const capture = injectDetachedCapture();
+    void component.captureSnapshot(capture); // not awaited — navigation isn't gated on it
+    return true;
+  };
+  ```
+- The package re-exports the core public surface, so a consumer imports from one package.
+
+Peer requirement: `@angular/core >= 19`. Full usage doc: [`/angular`](https://snapshot.moimob.com/angular/) on the docs site.

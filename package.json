@@ -9,7 +9,7 @@
     "dev": "concurrently -k -n docs,gallery -c cyan,yellow \"npm run dev -w apps/docs\" \"npm run dev -w apps/gallery\"",
     "dev:docs": "npm run dev -w apps/docs",
     "dev:gallery": "npm run dev -w apps/gallery",
-    "build:packages": "npm run build -w packages/core",
+    "build:packages": "npm run build -w packages/core && npm run build -w packages/angular",
     "test": "npm run test -w packages/core",
     "test:e2e": "start-server-and-test dev:gallery http://localhost:3200 \"cypress run\"",
     "test:e2e:open": "start-server-and-test dev:gallery http://localhost:3200 \"cypress open\"",

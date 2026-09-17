@@ -10,4 +10,12 @@ export default defineConfig({
       '@anton-gustafsson/snapshot-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        angular: path.resolve(__dirname, 'angular/index.html'),
+      },
+    },
+  },
 });
