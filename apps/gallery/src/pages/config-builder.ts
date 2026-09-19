@@ -14,6 +14,7 @@ interface Config {
   editable: boolean;
   editButtonPosition: 'overlay' | 'meta';
   editIcon: string;
+  placeholderText: string;
   accent: string;
   radius: number;
   radiusSm: number;
@@ -26,6 +27,7 @@ const DEFAULTS: Config = {
   editable: false,
   editButtonPosition: 'overlay',
   editIcon: '✎',
+  placeholderText: '',
   accent: '#ff5a1f',
   radius: 10,
   radiusSm: 7,
@@ -37,6 +39,7 @@ function applyConfig(nav: HTMLElement, c: Config) {
   nav.toggleAttribute('editable', c.editable);
   nav.setAttribute('edit-button-position', c.editButtonPosition);
   nav.setAttribute('edit-icon', c.editIcon);
+  nav.setAttribute('placeholder-text', c.placeholderText);
   nav.style.setProperty('--snapshot-nav-list-accent', c.accent);
   nav.style.setProperty('--snapshot-nav-list-radius', `${c.radius}px`);
   nav.style.setProperty('--snapshot-nav-list-radius-sm', `${c.radiusSm}px`);
@@ -49,6 +52,7 @@ function snippet(c: Config): string {
     ...(c.editable
       ? ['editable', `edit-button-position="${c.editButtonPosition}"`, `edit-icon="${c.editIcon}"`]
       : []),
+    ...(c.placeholderText ? [`placeholder-text="${c.placeholderText}"`] : []),
   ].join('\n  ');
 
   const vars: [keyof Config, string, string][] = [
@@ -275,6 +279,7 @@ export function render(container: HTMLElement) {
   checkbox(layoutGrid, 'editable', 'Editable');
   select(layoutGrid, 'editButtonPosition', 'Edit button position', ['overlay', 'meta']);
   text(layoutGrid, 'editIcon', 'Edit icon (glyph or markup)');
+  text(layoutGrid, 'placeholderText', 'Empty-frame caption');
 
   color(themingGrid, 'accent', 'Accent');
   range(themingGrid, 'radius', 'Card radius', 0, 40, 1, 'px');

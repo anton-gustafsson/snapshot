@@ -46,6 +46,7 @@ import { SNAPSHOT_SERVICE } from './provide-snapshot';
     [attr.editable]="editable() ? '' : null"
     [attr.edit-button-position]="editButtonPosition()"
     [attr.edit-icon]="editIcon()"
+    [attr.placeholder-text]="placeholderText()"
     [attr.scrollable]="scrollable() ? '' : null"
     (nav-select)="onNavSelect($event)"
     (nav-edit)="onNavEdit($event)"
@@ -61,6 +62,8 @@ export class SnapshotNavListComponent<T = unknown> {
   readonly editButtonPosition = input<SnapshotNavListEditButtonPosition>('overlay');
   /** Edit button glyph — plain text (e.g. an emoji), or markup (a string starting with `<`) to pass your own icon, e.g. `<svg>...</svg>`. */
   readonly editIcon = input('✎');
+  /** Caption shown in the frame of a card with no capture yet (e.g. `'no snapshot yet'`) — plain text, overridable per row via `NavItem.placeholderText`. Empty keeps the icon-and-hatch placeholder. */
+  readonly placeholderText = input('');
   /** Lets the component itself scroll (see `--snapshot-nav-list-max-height`) instead of growing unbounded. */
   readonly scrollable = input(false);
   /** Optional override of the injected `SnapshotService` (see `provideSnapshot()`). */

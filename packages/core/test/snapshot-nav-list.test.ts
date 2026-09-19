@@ -66,6 +66,51 @@ describe('<snapshot-nav-list>', () => {
     expect(el.shadowRoot!.querySelectorAll('.thumb-placeholder')).toHaveLength(2);
   });
 
+  it('captions empty frames with placeholder-text, per-item overrides included', async () => {
+    const { el } = await mount(
+      [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B', placeholderText: 'not visited yet' },
+        { id: 'c', label: 'C', placeholderText: '' },
+      ],
+      { 'placeholder-text': 'no snapshot yet' },
+    );
+
+    const captions = Array.from(el.shadowRoot!.querySelectorAll('.placeholder-text'), (n) => n.textContent);
+    expect(captions).toEqual(['no snapshot yet', 'not visited yet']);
+    // '' opts the third card back out, so it keeps the plain hatched frame.
+    expect(el.shadowRoot!.querySelectorAll('.thumb-placeholder.has-text')).toHaveLength(2);
+  });
+
+  it('renders an icon only as markup, ignoring (and warning about) a bare glyph', async () => {
+    const warnings: unknown[] = [];
+    const warn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args[0]);
+    try {
+      const { el } = await mount([
+        { id: 'a', label: 'A', icon: '<svg data-testid="art"></svg>' },
+        { id: 'b', label: 'B', icon: '📈' },
+      ]);
+
+      const frames = el.shadowRoot!.querySelectorAll('.thumb-placeholder');
+      expect(frames[0].querySelector('[data-testid="art"]')).not.toBeNull();
+      // The glyph card keeps its frame, just an empty one: no stray character.
+      expect(frames[1].querySelector('.icon-lg')).toBeNull();
+      expect(frames[1].textContent?.trim()).toBe('');
+      expect(warnings).toHaveLength(1);
+      expect(String(warnings[0])).toContain('NavItem.icon takes markup');
+    } finally {
+      console.warn = warn;
+    }
+  });
+
+  it('leaves the placeholder uncaptioned by default', async () => {
+    const { el } = await mount([{ id: 'a', label: 'A' }]);
+
+    expect(el.shadowRoot!.querySelectorAll('.placeholder-text')).toHaveLength(0);
+    expect(el.shadowRoot!.querySelectorAll('.thumb-placeholder.has-text')).toHaveLength(0);
+  });
+
   it('paints a stored snapshot, and re-reads under the new key when variant-key changes', async () => {
     const { el, storage, service } = await mount([{ id: 'a', label: 'A' }]);
     await storage.save(new Blob(['x']), service.keyOf('a', { variant: 'dark' }));

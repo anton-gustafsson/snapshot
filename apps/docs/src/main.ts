@@ -2,10 +2,14 @@ import '@anton-gustafsson/snapshot-core';
 import type { NavItem } from '@anton-gustafsson/snapshot-core';
 import { getDefaultSnapshotService } from '@anton-gustafsson/snapshot-core';
 
+/** `NavItem.icon` takes markup, not a glyph — one shared line icon keeps the playground's three cards honest about that. */
+const CHART_ICON =
+  '<svg viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 20h18"/><path d="M4 16l5-5 4 4 7-8"/></g></svg>';
+
 const items: NavItem[] = [
-  { id: 'revenue', label: 'Revenue', icon: '💰' },
-  { id: 'signups', label: 'Signups', icon: '✦' },
-  { id: 'churn', label: 'Churn', icon: '⤴' },
+  { id: 'revenue', label: 'Revenue', icon: CHART_ICON },
+  { id: 'signups', label: 'Signups', icon: CHART_ICON },
+  { id: 'churn', label: 'Churn', icon: CHART_ICON },
 ];
 
 const WIDGET_COLORS = ['#6c5ce7', '#00b894', '#0984e3', '#fdcb6e', '#e17055'];

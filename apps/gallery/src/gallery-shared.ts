@@ -273,13 +273,44 @@ export interface GalleryItemData {
 
 export type GalleryItem = NavItem<GalleryItemData>;
 
+/**
+ * `NavItem.icon` is markup-only, so these are line icons rather than the
+ * emoji they used to be. Stroke attributes live on a `<g>`: the component's
+ * own `.icon-lg svg { fill: currentColor }` would otherwise flood a stroke
+ * drawing solid, and a presentation attribute beats an inherited value.
+ */
+export function strokeIcon(body: string): string {
+  return (
+    '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+    '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    body +
+    '</g></svg>'
+  );
+}
+
 export const DASHBOARDS: GalleryItem[] = [
-  { id: 'sales', label: 'Sales', icon: '📈' },
-  { id: 'inventory', label: 'Inventory', icon: '📦' },
-  { id: 'support', label: 'Support', icon: '🎧' },
-  { id: 'ops', label: 'Operations', icon: '⚙' },
-  { id: 'weather', label: 'Weather', icon: '☀' },
-  { id: 'signups', label: 'Signups', icon: '✦' },
+  { id: 'sales', label: 'Sales', icon: strokeIcon('<path d="M3 20h18"/><path d="M4 16l5-5 4 4 7-8"/>') },
+  { id: 'inventory', label: 'Inventory', icon: strokeIcon('<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>') },
+  {
+    id: 'support',
+    label: 'Support',
+    icon: strokeIcon('<path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2" y="13.5" width="5" height="6.5" rx="2"/><rect x="17" y="13.5" width="5" height="6.5" rx="2"/>'),
+  },
+  {
+    id: 'ops',
+    label: 'Operations',
+    icon: strokeIcon('<circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/>'),
+  },
+  {
+    id: 'weather',
+    label: 'Weather',
+    icon: strokeIcon('<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M5.2 5.2l1.8 1.8M17 17l1.8 1.8M18.8 5.2L17 7M7 17l-1.8 1.8"/>'),
+  },
+  {
+    id: 'signups',
+    label: 'Signups',
+    icon: strokeIcon('<circle cx="9.5" cy="8" r="3.5"/><path d="M3 20a6.5 6.5 0 0113 0"/><path d="M18.5 8.5v6M15.5 11.5h6"/>'),
+  },
 ];
 
 export function makeNavList<T>(

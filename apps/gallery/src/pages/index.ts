@@ -13,6 +13,7 @@ export const pages: GalleryPage[] = [
   { path: '/theming', label: 'Theming', load: () => import('./theming') },
   { path: '/loading', label: 'Loading state', load: () => import('./loading') },
   { path: '/text-combos', label: 'Text & edit', load: () => import('./text-combos') },
+  { path: '/fallback-images', label: 'Fallback images', load: () => import('./fallback-images') },
   { path: '/elevation', label: 'Elevation', load: () => import('./elevation') },
   { path: '/remote-storage', label: 'Remote storage', load: () => import('./remote-storage') },
   { path: '/sqlite', label: 'SQLite + IndexedDB preload', load: () => import('./sqlite') },
