@@ -8,8 +8,10 @@ export interface NavItem<T = unknown> {
   /** The snapshot id — a plain domain id. Anything else the consumer needs belongs in `data`. */
   id: string;
   label: string;
-  /** A plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG instead of text, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). Only the placeholder frame shown before a card's first capture. */
+  /** Markup — `<svg>`, `<img>`, or any element — rendered as raw HTML in the placeholder frame shown before a card's first capture. Must start with `<`: a bare glyph or emoji is ignored (it read as an icon but rendered as a stray character at whatever the frame's font happened to be); use `placeholderText` for words. */
   icon?: string;
+  /** Per-item override of the component-level `placeholderText` — a caption in the frame shown before this card's first capture (e.g. "not visited yet"). Plain text only; pass `''` to show none where the component sets one. */
+  placeholderText?: string;
   description?: string;
   /** Arbitrary consumer payload — echoed back verbatim on `nav-select` / `nav-edit`, so no lookup-by-id is needed in the handler. */
   data?: T;
@@ -21,6 +23,25 @@ export interface NavItem<T = unknown> {
 
 function isMarkupIcon(icon: string): boolean {
   return icon.trimStart().startsWith('<');
+}
+
+const warnedTextIcons = new Set<string>();
+
+/**
+ * `NavItem.icon` is markup-only, so a plain-text glyph renders as nothing —
+ * silently, without this, since the old behavior was to paint it as text.
+ * Warns once per distinct value: `items` re-renders on every thumbnail that
+ * lands, and a whole list of glyph icons would otherwise flood the console.
+ */
+function markupIconOrWarn(icon: string): string | undefined {
+  if (isMarkupIcon(icon)) return icon;
+  if (!warnedTextIcons.has(icon)) {
+    warnedTextIcons.add(icon);
+    console.warn(
+      `<snapshot-nav-list>: NavItem.icon takes markup (e.g. '<svg>...</svg>'), not text — ignoring ${JSON.stringify(icon)}. Use placeholderText for a caption.`,
+    );
+  }
+  return undefined;
 }
 
 /** `overlay` floats the edit button over the thumbnail (top-right, reveals on hover); `meta` pins it to the right edge of the title's line (description below), always visible. */
@@ -111,27 +132,74 @@ export class SnapshotNavList extends LitElement {
     }
     /* unexposed frame: fine diagonal hatch instead of a generic gradient blob */
     .thumb-placeholder {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0;
+      background-color: var(--snapshot-nav-list-placeholder-bg, color-mix(in srgb, currentColor 7%, transparent));
+      /* var-driven so a plain 'none' turns the hatch off on its own — a card
+         showing real fallback art wants the frame plain behind it. */
+      background-image: var(
+        --snapshot-nav-list-placeholder-hatch,
+        repeating-linear-gradient(
+          135deg,
+          color-mix(in srgb, currentColor 16%, transparent) 0px,
+          color-mix(in srgb, currentColor 16%, transparent) 1.5px,
+          transparent 1.5px,
+          transparent 7px
+        )
+      );
+    }
+    /* A caption carries the "nothing here yet" meaning on its own, so the hatch
+       (and the tint under it) would only fight it — the frame goes see-through,
+       marked out by a dashed edge instead. */
+    .thumb-placeholder.has-text {
+      background-color: var(--snapshot-nav-list-placeholder-bg, transparent);
+      background-image: none;
+      border: 1px dashed var(--snapshot-nav-list-placeholder-border, color-mix(in srgb, currentColor 22%, transparent));
+      border-radius: inherit;
+    }
+    .placeholder-text {
+      font-family: var(--snapshot-nav-list-placeholder-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: var(--snapshot-nav-list-placeholder-font-size, 0.75rem);
+      letter-spacing: var(--snapshot-nav-list-placeholder-letter-spacing, 0.02em);
+      color: var(--snapshot-nav-list-placeholder-color, color-mix(in srgb, currentColor 55%, transparent));
+      max-width: 100%;
+      padding: 0 0.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+    /* Spans the frame (minus the caption, if any) rather than shrinking to the
+       glyph: a percentage width/height on a fallback <img> then has a real box
+       to resolve against, while a default-sized icon still sits centered. */
+    .icon-lg {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: color-mix(in srgb, currentColor 7%, transparent);
-      background-image: repeating-linear-gradient(
-        135deg,
-        color-mix(in srgb, currentColor 16%, transparent) 0px,
-        color-mix(in srgb, currentColor 16%, transparent) 1.5px,
-        transparent 1.5px,
-        transparent 7px
-      );
+      opacity: var(--snapshot-nav-list-placeholder-icon-opacity, 0.4);
     }
-    .icon-lg {
-      font-size: 1.6rem;
-      opacity: 0.4;
+    /* Sized off one var so a card using a real fallback image (rather than a
+       small glyph-sized icon) can grow it to fill the frame from outside the
+       shadow root. */
+    .icon-lg svg,
+    .icon-lg img {
+      width: var(--snapshot-nav-list-placeholder-icon-size, 1.6rem);
+      height: var(--snapshot-nav-list-placeholder-icon-size, 1.6rem);
+      display: block;
     }
     .icon-lg svg {
-      width: 1.6rem;
-      height: 1.6rem;
-      display: block;
       fill: currentColor;
+    }
+    .icon-lg img {
+      object-fit: var(--snapshot-nav-list-placeholder-icon-fit, contain);
     }
     .thumb-loading {
       display: flex;
@@ -276,6 +344,14 @@ export class SnapshotNavList extends LitElement {
   editButtonPosition: SnapshotNavListEditButtonPosition = 'overlay';
   /** Edit button glyph. Same convention as `NavItem.icon`: a plain-text glyph (e.g. an emoji), or markup — a string starting with `<` renders as raw HTML/SVG, so a consumer can pass its own icon (e.g. `<svg>...</svg>`). */
   @property({ attribute: 'edit-icon' }) editIcon = DEFAULT_EDIT_ICON;
+  /**
+   * Caption shown in the frame of a card with no capture yet (e.g. "no snapshot
+   * yet"), for every card at once; `NavItem.placeholderText` overrides it per
+   * row. Plain text, never markup — it's rendered as text, not HTML. Empty by
+   * default, which keeps the icon-and-hatch placeholder; set it and the frame
+   * goes see-through with a dashed edge instead.
+   */
+  @property({ attribute: 'placeholder-text' }) placeholderText = '';
 
   @state() private thumbs = new Map<string, string>();
   @state() private loadingIds = new Set<string>();
@@ -421,6 +497,16 @@ export class SnapshotNavList extends LitElement {
     </button>`;
   }
 
+  /** The frame before a card's first capture: an icon, a caption, or both. */
+  private renderPlaceholder(item: NavItem) {
+    const text = item.placeholderText ?? this.placeholderText;
+    const icon = item.icon ? markupIconOrWarn(item.icon) : undefined;
+    return html`<div class="thumb thumb-placeholder ${text ? 'has-text' : ''}" part="thumb" aria-hidden="true">
+      ${icon ? html`<span class="icon-lg" part="placeholder-icon">${unsafeHTML(icon)}</span>` : ''}
+      ${text ? html`<span class="placeholder-text" part="placeholder-text">${text}</span>` : ''}
+    </div>`;
+  }
+
   override render() {
     const editInMeta = this.editButtonPosition === 'meta';
     return html`
@@ -441,11 +527,7 @@ export class SnapshotNavList extends LitElement {
                     ? html`<div class="thumb thumb-loading" part="thumb" aria-hidden="true">
                         <span class="spinner" part="spinner"></span>
                       </div>`
-                    : html`<div class="thumb thumb-placeholder" part="thumb" aria-hidden="true">
-                        <span class="icon-lg"
-                          >${item.icon ? (isMarkupIcon(item.icon) ? unsafeHTML(item.icon) : item.icon) : ''}</span
-                        >
-                      </div>`}
+                    : this.renderPlaceholder(item)}
                 ${this.isEditable(item) && !editInMeta ? this.renderEditButton(item) : ''}
               </div>
               <div class="meta" part="meta">

@@ -222,8 +222,45 @@ instance); fully themeable via CSS custom properties.
 - `variant-key` — passed through to `get()` as `variant`; bind it to the active theme.
 - `editable` — per-card edit button firing `nav-edit`; `NavItem.editable` overrides it per row.
 - `edit-button-position` — `'overlay'` (default, floats over the preview) or `'meta'` (pinned beside the title).
+- `placeholder-text` — a caption in the frame of a card with no capture yet (e.g. `no snapshot yet`).
 - `scrollable` — the host scrolls itself, with `--snapshot-nav-list-max-height`.
 - `nav-select` / `nav-edit` — detail is the whole `NavItem<T>`, `data` payload included.
+
+An uncaptured card shows a hatched frame with `NavItem.icon` in it, if there is one. `icon` is
+markup only — an `<svg>`, an `<img>` of your own fallback art, any element — and a bare glyph or
+emoji is ignored (it used to paint as a stray character in whatever font the frame inherited). Set
+`placeholder-text` to caption that frame instead — the hatch and its tint drop away (the frame goes
+see-through, marked out by a dashed edge) so the words carry the empty state on their own:
+
+```html
+<snapshot-nav-list placeholder-text="no snapshot yet"></snapshot-nav-list>
+```
+
+It's plain text, never markup. `NavItem.placeholderText` overrides it per row (`''` opts a single
+row back out to the plain hatched frame), and an item with both an `icon` and a caption stacks them,
+icon above text. Style it with `--snapshot-nav-list-placeholder-font` / `-font-size` /
+`-letter-spacing` / `-color` / `-border` / `-bg`, or reach the span directly via
+`::part(placeholder-text)`.
+
+Fallback art is the same `icon` slot, grown past its glyph-sized default:
+
+```html
+<style>
+  snapshot-nav-list {
+    --snapshot-nav-list-placeholder-icon-size: 100%; /* default 1.6rem */
+    --snapshot-nav-list-placeholder-icon-opacity: 1; /* default 0.4 */
+    --snapshot-nav-list-placeholder-icon-fit: cover; /* <img> only, default contain */
+    --snapshot-nav-list-placeholder-hatch: none; /* clear the hatch behind the art */
+  }
+</style>
+```
+
+```ts
+nav.items = [{ id: 'weather', label: 'Weather', icon: '<img src="/art/weather.png" alt="">' }];
+```
+
+The gallery's **Fallback images** page (`/examples/#/fallback-images`) lines the empty states up side
+by side — bare hatch, caption only, svg icon, icon plus caption.
 
 ### `@anton-gustafsson/snapshot-angular`
 
@@ -238,7 +275,7 @@ import {
 ```
 
 A thin standalone wrapper (`<ngx-snapshot-nav-list>`) around `<snapshot-nav-list>`, built on signal
-inputs/outputs (`items`, `variantKey`, `editable`, `editButtonPosition`, `editIcon`, `scrollable`,
+inputs/outputs (`items`, `variantKey`, `editable`, `editButtonPosition`, `editIcon`, `placeholderText`, `scrollable`,
 `(select)`, `(edit)`) — Angular-idiomatic bindings instead of raw attributes/DOM events, zoneless-safe.
 
 - `provideSnapshot(config?)` — registers a configured `SnapshotService` under `SNAPSHOT_SERVICE` for

@@ -278,11 +278,12 @@ export const snapshots = new SnapshotService({
             <tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>items</code></td><td><code>NavItem&lt;T&gt;[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute. Each item is <code>{ id, label, icon?, description?, data?, editable? }</code>; <code>data</code> is your own payload, echoed back on every event.</td></tr>
+            <tr><td><code>items</code></td><td><code>NavItem&lt;T&gt;[]</code></td><td><code>[]</code></td><td>Property only — arrays can't cross an HTML attribute. Each item is <code>{ id, label, icon?, placeholderText?, description?, data?, editable? }</code>; <code>data</code> is your own payload, echoed back on every event. <code>icon</code> is markup only (<code>&lt;svg&gt;</code>, <code>&lt;img&gt;</code>) and fills the frame before the first capture — a bare emoji is ignored.</td></tr>
             <tr><td><code>variant-key</code></td><td><code>string</code></td><td>—</td><td>Passed through to <code>get()</code> as <code>variant</code> — bind it to the active theme and each card reads that theme's own capture.</td></tr>
             <tr><td><code>editable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Shows a per-card edit button that fires <code>nav-edit</code> instead of <code>nav-select</code>. <code>NavItem.editable</code> overrides it per row, for per-row rights.</td></tr>
             <tr><td><code>edit-button-position</code></td><td><code>'overlay' | 'meta'</code></td><td><code>'overlay'</code></td><td><code>overlay</code> floats the button over the preview, revealed on hover; <code>meta</code> pins it to the right edge of the title line, always visible.</td></tr>
             <tr><td><code>edit-icon</code></td><td><code>string</code></td><td><code>'✎'</code></td><td>A plain-text glyph, or markup — a string starting with <code>&lt;</code> renders as raw HTML/SVG.</td></tr>
+            <tr><td><code>placeholder-text</code></td><td><code>string</code></td><td><code>''</code></td><td>A caption in the frame of a card with no capture yet, e.g. <code>no snapshot yet</code> — plain text, never markup. Setting it drops the hatch for a see-through frame with a dashed edge. <code>NavItem.placeholderText</code> overrides it per row (<code>''</code> opts one row back out).</td></tr>
             <tr><td><code>scrollable</code></td><td><code>boolean</code></td><td><code>false</code></td><td>The host scrolls itself (pair with <code>--snapshot-nav-list-max-height</code>) instead of growing unbounded in a flex sidebar.</td></tr>
           </tbody>
         </table>
@@ -342,7 +343,7 @@ export const snapshots = new SnapshotService({
         <pre><code>import '@anton-gustafsson/snapshot-core';
 
 const nav = document.createElement('snapshot-nav-list');
-nav.items = [{ id: 'sales', label: 'Sales', icon: '📈' }];
+nav.items = [{ id: 'sales', label: 'Sales', icon: '&lt;svg&gt;...&lt;/svg&gt;' }]; // icon is markup, not a glyph
 nav.addEventListener('nav-select', (e) => {
   goTo(e.detail.id); // e.detail is the whole item, `data` included
 });

@@ -7,6 +7,14 @@ version. Pre-1.0, so breaking changes ship with a migration note instead of a de
 
 ### Added
 
+- **`<snapshot-nav-list placeholder-text>`** (and `NavItem.placeholderText` per row, `''` to opt a
+  single row back out) — a caption in the frame of a card with no capture yet, e.g. "no snapshot
+  yet". Previously the empty frame could only hold a glyph, via `NavItem.icon`, so the empty state
+  had no way to say what it meant in words. Setting it drops the hatch and its tint — the frame goes
+  see-through with a dashed edge — and stacks the caption under `icon` when a card has both. Plain
+  text, never markup, unlike `icon`. Themeable via `--snapshot-nav-list-placeholder-font` /
+  `-font-size` / `-letter-spacing` / `-color` / `-border` / `-bg`, or `::part(placeholder-text)`.
+
 - **`CaptureOptions.onclone`** — passed straight through to html2canvas: a hook into the cloned
   document right before it's rendered, for anything that needs to touch the clone specifically
   rather than the live element (html2canvas re-resolves styles on the clone, so a live-DOM mutation
@@ -37,6 +45,22 @@ version. Pre-1.0, so breaking changes ship with a migration note instead of a de
   instead of by whatever destroys the original view.
 
 ### Changed
+
+- **BREAKING: `NavItem.icon` is markup-only.** A plain-text glyph (an emoji, a `+`, a `*`) is no
+  longer rendered — it paints nothing and logs one warning per distinct value. A glyph inherited
+  whatever font and size the frame happened to have and gave the empty state no way to say what it
+  meant; `placeholderText` covers words, and `icon` covers art. Migration: wrap the glyph in an
+  element (`icon: '<span>*</span>'`), swap it for an `<svg>`/`<img>`, or move the intent into
+  `placeholderText`. `editIcon` is unaffected — it still takes a glyph or markup, and still
+  defaults to `'✎'`.
+- **The placeholder icon slot spans the frame** (minus the caption, if any) instead of shrinking to
+  the glyph, so a fallback `<img>` can be sized as a percentage. Three new custom properties drive
+  it: `--snapshot-nav-list-placeholder-icon-size` (default `1.6rem`), `-icon-opacity` (default
+  `0.4`), `-icon-fit` (`<img>` only, default `contain`). The span is exposed as
+  `::part(placeholder-icon)`.
+- **The empty frame's hatch is now a custom property** — `--snapshot-nav-list-placeholder-hatch:
+  none` clears it (real fallback art behind a hatch reads as a rendering bug), and
+  `--snapshot-nav-list-placeholder-bg` recolors the fill under it.
 
 - `neutralizeOklchColors()` is no longer exported — it was the right *fix*, but the wrong *shape*: an
   extra function a caller had to know existed, import, and sequence correctly around `capture()` by
