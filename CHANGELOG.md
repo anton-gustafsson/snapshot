@@ -19,13 +19,22 @@ version. Pre-1.0, so breaking changes ship with a migration note instead of a de
   document right before it's rendered, for anything that needs to touch the clone specifically
   rather than the live element (html2canvas re-resolves styles on the clone, so a live-DOM mutation
   made just before `capture()` isn't guaranteed to still apply by render time).
-- **`CaptureOptions.neutralizeColors`** — html2canvas can't parse `oklch()`/`oklab()`, which
-  `getComputedStyle` now resolves a growing share of real-world CSS to (any app on a palette defined
-  in OKLCH — Tailwind v4's own default colors included — hits this, regardless of how the color was
-  originally authored). Set to rewrite every resolved color on the page to a plain `hsl()` for the
-  duration of the capture (colors mid-CSS-transition included — Chrome resolves those through oklab
-  too) and restore it after. Off by default: it's a full-document style walk plus an on-demand import
-  of `colorjs.io`, so only pay for it on a page that actually hits this.
+- **`CaptureOptions.neutralizeColors`** — html2canvas can't parse `oklch()`/`oklab()`/`lab()`/
+  `lch()`/`color()`, which `getComputedStyle` now resolves a growing share of real-world CSS to (any
+  app on a palette defined in OKLCH — Tailwind v4's own default colors included — and every
+  `color-mix()`, which resolves to `color(srgb ...)`). Set to rewrite those to a plain `hsl()` in
+  html2canvas's clone of `el` — the live page is never touched, so nothing flickers or needs
+  restoring. Off by default: it's a style walk over `el`'s subtree plus an on-demand import of
+  `colorjs.io`, so only pay for it on a page that actually hits this.
+
+### Changed
+
+- **`capture()` clones `el` synchronously** once html2canvas has loaded (a `SnapshotService` starts
+  loading it on construction in the browser). Previously two dynamic `import()`s ran first, so a
+  capture fired on the way out of a view could find `el` already destroyed.
+- **`get()`/`getMany()` wait for a capture of the same id still in flight**, instead of returning the
+  previous image (or `null`) while the new one renders — e.g. the view you land on reading the
+  thumbnail of the view you just left.
 - **`CaptureOptions.width`/`height`/`fit`/`background`** — capture `el` into an exact, pre-sized
   thumbnail regardless of its own shape. `fit: 'cover'` scales to fill and crops the overflow,
   centered (upscaling undersized content); `fit: 'contain'` scales to fit entirely inside, letterboxed

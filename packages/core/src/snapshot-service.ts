@@ -1,7 +1,7 @@
 import type { EncodeOptions } from './encode';
 import { encodeSnapshot } from './encode';
 import { SnapshotDetachedElementError, SnapshotRenderError, SnapshotTaintedCanvasError } from './errors';
-import { neutralizeOklchColors } from './neutralize-oklch';
+import { neutralizeColors } from './neutralize-colors';
 import type { SnapshotKey, SnapshotStorage } from './snapshot-storage';
 import { IndexedDbSnapshotStorage } from './snapshot-storage';
 
@@ -81,13 +81,14 @@ export interface CaptureOptions extends VariantOptions {
    */
   contentCrop?: boolean;
   /**
-   * Rewrites resolved `oklch()`/`oklab()` colors (anywhere in the document,
-   * not just `el`) to `hsl()` for the duration of the capture, then restores
-   * them. html2canvas can't parse either function, and `getComputedStyle`
-   * resolves a growing share of ordinary CSS to one of them regardless of
-   * how the color was authored — Tailwind v4's default palette included.
-   * Off by default: it's a full-document style walk plus an on-demand import
-   * of `colorjs.io`, so only pay for it on a page that actually hits this.
+   * Rewrites resolved `oklch()`/`oklab()`/`lab()`/`lch()`/`color()` colors to
+   * `hsl()` in html2canvas's clone of `el` (the live page is never touched).
+   * html2canvas can't parse any of them, and `getComputedStyle` resolves a
+   * growing share of ordinary CSS to one regardless of how the color was
+   * authored — Tailwind v4's default palette (`oklch()`) and every
+   * `color-mix()` (`color(srgb ...)`) included. Off by default: it's a style
+   * walk over `el`'s subtree plus an on-demand import of `colorjs.io`, so
+   * only pay for it on a page that actually hits this.
    */
   neutralizeColors?: boolean;
 }
@@ -105,6 +106,27 @@ const VARIANT_SEPARATOR = '@';
 // and storage keys. Entries are dropped on close(), so a hot-reload that
 // re-instantiates a closed service doesn't warn.
 const activeKeyPrefixes = new Set<string>();
+
+type Html2Canvas = typeof import('html2canvas').default;
+let html2canvasModule: Html2Canvas | undefined;
+let html2canvasLoading: Promise<Html2Canvas> | undefined;
+
+/**
+ * Imported on demand so `import '@anton-gustafsson/snapshot-core'` doesn't
+ * pull a DOM-only dependency into a Node/SSR/Jest process that only wants the
+ * types or a storage. Cached once loaded, so `capture()` can reach it without
+ * an `await` — see `runCapture()` for why that matters.
+ */
+function loadHtml2canvas(): Promise<Html2Canvas> {
+  return (html2canvasLoading ??= import('html2canvas').then(
+    (m) => (html2canvasModule = m.default),
+    (err) => {
+      // Let a later capture retry (e.g. a chunk that failed on a flaky network).
+      html2canvasLoading = undefined;
+      throw err;
+    },
+  ));
+}
 
 /** So a container much bigger than its content (e.g. a full-page canvas with one small widget) doesn't capture as mostly empty space — crop to the actual children's bounding box, padded, instead of the whole element. */
 function getContentBounds(el: HTMLElement) {
@@ -245,6 +267,9 @@ export class SnapshotService {
       };
     }
     this.storage.attach?.(this);
+    // Warm html2canvas in the browser, so the first capture — typically fired
+    // on the way out of a view — can clone `el` before it's torn down.
+    if (typeof document !== 'undefined') loadHtml2canvas().catch(() => {});
   }
 
   /**
@@ -285,14 +310,22 @@ export class SnapshotService {
   /**
    * Capture works on any element — a snapshot-nav-list item is one convention,
    * not a requirement. Concurrent calls for the same id/variant share one
-   * render instead of racing two.
+   * render instead of racing two, and `get()`/`getMany()` for that id wait
+   * for it rather than returning the previous image.
+   *
+   * Once html2canvas has loaded (the constructor starts loading it), `el` is
+   * cloned synchronously, inside this call — so it's safe to call right
+   * before a framework destroys the view, without awaiting anything first.
    */
-  async capture(el: HTMLElement, id: string, opts: CaptureOptions = {}): Promise<string> {
-    // Declared `async` on purpose: `keyOf()` can throw synchronously (a
-    // caller-supplied `keyFor` is free to), and without `async` that throw
-    // would escape as a synchronous exception instead of a rejected promise,
-    // bypassing a caller's chained `.catch()`.
-    const key = this.keyOf(id, opts);
+  capture(el: HTMLElement, id: string, opts: CaptureOptions = {}): Promise<string> {
+    let key: SnapshotKey;
+    try {
+      key = this.keyOf(id, opts);
+    } catch (err) {
+      // `keyOf()` can throw (a caller-supplied `keyFor` is free to) — reject
+      // instead, so a caller's chained `.catch()` still sees it.
+      return Promise.reject(err);
+    }
     const inFlight = this.capturing.get(key.key);
     if (inFlight) return inFlight;
     const run = this.runCapture(el, key, opts).finally(() => this.capturing.delete(key.key));
@@ -300,7 +333,19 @@ export class SnapshotService {
     return run;
   }
 
+  /** Resolves once any capture in flight for these keys has settled, so a read sees what it stores. */
+  private async settleCaptures(keys: SnapshotKey[]) {
+    const pending = keys.flatMap((key) => this.capturing.get(key.key) ?? []);
+    if (pending.length) await Promise.allSettled(pending);
+  }
+
   private async runCapture(el: HTMLElement, key: SnapshotKey, opts: CaptureOptions) {
+    // Everything up to the html2canvas() call below must stay free of
+    // `await` whenever html2canvas is already loaded: html2canvas clones `el`
+    // synchronously inside that call, and the caller is typically about to
+    // destroy the view — one tick later, `el` may already be gone.
+    const html2canvas = html2canvasModule ?? (await loadHtml2canvas());
+
     // A detached element renders as an empty (or, under html2canvas, a failed)
     // clone — reject with something the caller can recognise instead of
     // storing a blank thumbnail over a good one.
@@ -323,11 +368,16 @@ export class SnapshotService {
         ? { x: 0, y: 0, width: opts.width as number, height: opts.height as number }
         : { x: 0, y: 0, width: target.clientWidth, height: target.clientHeight };
 
-    const restoreColors = opts.neutralizeColors ? await neutralizeOklchColors(document.documentElement) : undefined;
-    // Imported on demand so `import '@anton-gustafsson/snapshot-core'` doesn't
-    // pull a DOM-only dependency into a Node/SSR/Jest process that only wants
-    // the types or a storage.
-    const { default: html2canvas } = await import('html2canvas');
+    const { onclone: userOnclone, neutralizeColors: neutralize } = opts;
+    const onclone =
+      neutralize || userOnclone
+        ? async (doc: Document, clone: HTMLElement) => {
+            await userOnclone?.(doc, clone);
+            // After the caller's hook, so whatever it adds is neutralized too.
+            if (neutralize) await neutralizeColors(doc, clone);
+          }
+        : undefined;
+
     let canvas: HTMLCanvasElement;
     try {
       canvas = await html2canvas(target, {
@@ -338,13 +388,12 @@ export class SnapshotService {
         y: crop.y,
         width: crop.width,
         height: crop.height,
-        onclone: opts.onclone,
+        onclone,
       });
     } catch (err) {
       // errors.ts documents every rejection from this library as a SnapshotError.
       throw new SnapshotRenderError(key.id, err);
     } finally {
-      restoreColors?.();
       fitFrame?.cleanup();
     }
     const raw = await new Promise<Blob>((resolve, reject) =>
@@ -357,8 +406,11 @@ export class SnapshotService {
     return url;
   }
 
-  get(id: string, opts: VariantOptions = {}) {
-    return this.storage.load(this.keyOf(id, opts));
+  /** The stored image URL, or `null`. Waits for a capture of `id` still in flight. */
+  async get(id: string, opts: VariantOptions = {}) {
+    const key = this.keyOf(id, opts);
+    await this.settleCaptures([key]);
+    return this.storage.load(key);
   }
 
   /**
@@ -368,6 +420,7 @@ export class SnapshotService {
    */
   async getMany(ids: string[], opts: VariantOptions = {}): Promise<Map<string, string | null>> {
     const keys = ids.map((id) => this.keyOf(id, opts));
+    await this.settleCaptures(keys);
     const byId = new Map<string, string | null>();
     if (this.storage.loadMany) {
       const byKey = await this.storage.loadMany(keys);

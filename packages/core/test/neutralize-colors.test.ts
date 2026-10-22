@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { neutralizeOklchColors } from '../src/neutralize-oklch';
+import { neutralizeColors } from '../src/neutralize-colors';
 
 /**
  * jsdom's own CSS engine resolves `oklch()`/`oklab()` straight to `rgb()` at
@@ -38,9 +38,9 @@ afterEach(() => {
 // included — back to rgb() on read-back, so these assertions check "no
 // longer oklab/oklch, and is some legacy notation", not the exact hsl()
 // this function itself writes (which is what the real DOM would keep).
-const isNeutralized = (value: string) => !/okl(ch|ab)\(/.test(value) && /^rgb/.test(value);
+const isNeutralized = (value: string) => !/(okl(ch|ab)|color)\(/.test(value) && /^rgb/.test(value);
 
-describe('neutralizeOklchColors', () => {
+describe('neutralizeColors', () => {
   it('rewrites a resolved oklch()/oklab() color to a legacy inline color, !important', async () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
@@ -48,7 +48,7 @@ describe('neutralizeOklchColors', () => {
       new Map([[el, { color: 'oklch(0.704 0.191 22.216)', 'background-color': 'oklab(0.94 0.000871558 0.00996195)' }]]),
     );
 
-    await neutralizeOklchColors(el);
+    await neutralizeColors(document, el);
 
     expect(isNeutralized(el.style.getPropertyValue('color'))).toBe(true);
     expect(el.style.getPropertyPriority('color')).toBe('important');
@@ -69,7 +69,7 @@ describe('neutralizeOklchColors', () => {
       ]),
     );
 
-    await neutralizeOklchColors(root);
+    await neutralizeColors(document, root);
 
     expect(isNeutralized(child.style.getPropertyValue('color'))).toBe(true);
 
@@ -81,7 +81,7 @@ describe('neutralizeOklchColors', () => {
     document.body.appendChild(el);
     stubComputedStyle(new Map([[el, { color: 'rgb(255, 0, 0)', '--brand': 'oklch(0.55 0.19 275)' }]]));
 
-    await neutralizeOklchColors(el);
+    await neutralizeColors(document, el);
 
     expect(el.style.getPropertyPriority('color')).toBe('');
     expect(el.style.getPropertyValue('--brand')).toBe('');
@@ -89,41 +89,53 @@ describe('neutralizeOklchColors', () => {
     document.body.removeChild(el);
   });
 
-  it('restore puts back a pre-existing inline value, or clears one that had none', async () => {
+  it('rewrites color(srgb ...), what Chrome resolves color-mix() to', async () => {
     const el = document.createElement('div');
-    el.style.setProperty('color', 'red'); // pre-existing inline value
     document.body.appendChild(el);
-    stubComputedStyle(new Map([[el, { color: 'oklch(0.704 0.191 22.216)' }]]));
+    stubComputedStyle(new Map([[el, { 'border-color': 'color(srgb 0.1 0.2 0.3 / 0.12)' }]]));
 
-    const restore = await neutralizeOklchColors(el);
-    expect(isNeutralized(el.style.getPropertyValue('color'))).toBe(true);
+    await neutralizeColors(document, el);
 
-    restore();
-    expect(el.style.getPropertyValue('color')).toBe('red');
+    expect(isNeutralized(el.style.getPropertyValue('border-color'))).toBe(true);
 
     document.body.removeChild(el);
   });
 
-  it('suppresses transition/animation on every element, and restores them', async () => {
+  it("walks only el's subtree plus <html>/<body>, not siblings", async () => {
+    const el = document.createElement('div');
+    const sibling = document.createElement('div');
+    document.body.append(el, sibling);
+    const oklch = { color: 'oklch(0.704 0.191 22.216)' };
+    stubComputedStyle(new Map([[el, oklch], [sibling, oklch], [document.body, oklch]]));
+
+    await neutralizeColors(document, el);
+
+    expect(isNeutralized(el.style.getPropertyValue('color'))).toBe(true);
+    expect(isNeutralized(document.body.style.getPropertyValue('color'))).toBe(true);
+    expect(sibling.style.getPropertyValue('color')).toBe('');
+
+    el.remove();
+    sibling.remove();
+    document.body.removeAttribute('style');
+  });
+
+  it('suppresses transition/animation, so the rewrite does not start one', async () => {
     // A `transition` on the element itself makes writing a new color start
-    // one — a read straight after would then land mid-transition, which
-    // Chrome interpolates through oklab regardless of the rgb() this
-    // function just wrote. See the JSDoc for the full story; jsdom doesn't
-    // run real transitions, so this only asserts the inline suppression and
-    // its restore, not the timing bug itself.
+    // one — html2canvas's read straight after would then land mid-transition,
+    // which Chrome interpolates through oklab regardless of the color this
+    // function just wrote. jsdom doesn't run real transitions, so this only
+    // asserts the inline suppression, not the timing bug itself.
     const el = document.createElement('div');
     el.style.setProperty('transition', 'color 150ms', 'important');
     document.body.appendChild(el);
     stubComputedStyle(new Map([[el, { color: 'oklch(0.704 0.191 22.216)' }]]));
 
-    const restore = await neutralizeOklchColors(el);
+    await neutralizeColors(document, el);
     expect(el.style.getPropertyValue('transition')).toBe('none');
     expect(el.style.getPropertyValue('animation')).toBe('none');
 
-    restore();
-    expect(el.style.getPropertyValue('transition')).toBe('color 150ms');
-    expect(el.style.getPropertyValue('animation')).toBe('');
-
     document.body.removeChild(el);
+    document.body.removeAttribute('style');
+    document.documentElement.removeAttribute('style');
   });
 });

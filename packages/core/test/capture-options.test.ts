@@ -56,7 +56,7 @@ describe('SnapshotService.capture reliability options', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.doUnmock('html2canvas');
-    vi.doUnmock('../src/neutralize-oklch');
+    vi.doUnmock('../src/neutralize-colors');
     vi.resetModules();
   });
 
@@ -65,33 +65,62 @@ describe('SnapshotService.capture reliability options', () => {
     const html2canvasMock = vi.fn(async (_el: HTMLElement, _opts: Record<string, unknown>) => ({ toBlob }) as unknown as HTMLCanvasElement);
     vi.doMock('html2canvas', () => ({ default: html2canvasMock }));
 
-    const restore = vi.fn();
-    const neutralizeOklchColors = vi.fn(async () => restore);
-    vi.doMock('../src/neutralize-oklch', () => ({ neutralizeOklchColors }));
+    const neutralizeColors = vi.fn(async () => {});
+    vi.doMock('../src/neutralize-colors', () => ({ neutralizeColors }));
 
     const { SnapshotService } = await import('../src/snapshot-service');
-    const service = new SnapshotService({ storage: new MemoryStorage(), keyPrefix: 'opt:' });
+    const storage = new MemoryStorage();
+    const service = new SnapshotService({ storage, keyPrefix: 'opt:' });
     const el = document.createElement('div');
     document.body.appendChild(el);
 
-    return { service, el, html2canvasMock, neutralizeOklchColors, restore };
+    return { service, storage, el, html2canvasMock, neutralizeColors };
   }
 
+  type Onclone = (doc: Document, clone: HTMLElement) => Promise<void>;
+
   it('leaves color-neutralizing off unless asked for', async () => {
-    const { service, el, neutralizeOklchColors } = await setup();
+    const { service, el, html2canvasMock } = await setup();
 
     await service.capture(el, '1');
 
-    expect(neutralizeOklchColors).not.toHaveBeenCalled();
+    expect(html2canvasMock.mock.calls[0][1].onclone).toBeUndefined();
   });
 
-  it('neutralizes colors on the document root and restores after, when asked', async () => {
-    const { service, el, neutralizeOklchColors, restore } = await setup();
+  it('neutralizes colors on the clone, after the caller\'s own onclone, never the live page', async () => {
+    const { service, el, html2canvasMock, neutralizeColors } = await setup();
+    const calls: string[] = [];
+    neutralizeColors.mockImplementation(async () => void calls.push('neutralize'));
 
-    await service.capture(el, '1', { neutralizeColors: true });
+    await service.capture(el, '1', { neutralizeColors: true, onclone: () => void calls.push('caller') });
+    expect(neutralizeColors).not.toHaveBeenCalled();
 
-    expect(neutralizeOklchColors).toHaveBeenCalledWith(document.documentElement);
-    expect(restore).toHaveBeenCalledOnce();
+    const cloneDoc = document.implementation.createHTMLDocument();
+    const clone = cloneDoc.createElement('div');
+    await (html2canvasMock.mock.calls[0][1].onclone as Onclone)(cloneDoc, clone);
+    expect(calls).toEqual(['caller', 'neutralize']);
+    expect(neutralizeColors).toHaveBeenCalledWith(cloneDoc, clone);
+  });
+
+  it('clones el synchronously once html2canvas has loaded, so a view torn down right after still captures', async () => {
+    const { service, el, html2canvasMock } = await setup();
+    await service.capture(el, 'warm'); // first capture waits for the import
+
+    const pending = service.capture(el, '1');
+    expect(html2canvasMock).toHaveBeenCalledTimes(2);
+    el.remove();
+    await expect(pending).resolves.toBe('local:opt:1');
+  });
+
+  it('makes a read wait for a capture still in flight instead of returning the old image', async () => {
+    const { service, storage, el } = await setup();
+    await service.capture(el, 'warm');
+    storage.blobs.clear();
+
+    const pending = service.capture(el, '1');
+    await expect(service.get('1')).resolves.toBe('local:opt:1');
+    expect([...(await service.getMany(['1']))]).toEqual([['1', 'local:opt:1']]);
+    await pending;
   });
 
   it('builds an off-screen fit frame and hands that to html2canvas instead of el, then removes it', async () => {

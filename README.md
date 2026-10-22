@@ -172,20 +172,25 @@ on `whenStable()` inside a `canDeactivate` guard — the router holds a pending 
 navigation, so it resolves only after the view is destroyed, and html2canvas then fails with
 *"Unable to find element in cloned iframe"*.
 
+`capture()` clones `el` synchronously, inside the call (once html2canvas has loaded — a
+`SnapshotService` starts loading it when constructed), so there's no need to await anything before
+the view is torn down. A `get()`/`getMany()` for an id whose capture is still rendering waits for
+it, so the next view reads the new thumbnail, not the previous one.
+
 ### Reliable captures on real-world CSS
 
 `getComputedStyle` now resolves a growing share of ordinary CSS to `oklch()`/`oklab()` (Tailwind CSS
-v4's own default palette included) regardless of how the color was originally authored, and
-html2canvas can't parse either — capture rejects with `SnapshotRenderError` instead of producing a
-thumbnail. `CaptureOptions.neutralizeColors` fixes that: rewrites every resolved `oklch()`/`oklab()`
-on the page to a plain `hsl()` for the duration of the capture (and restores it after), including
-mid-transition colors, which Chrome also resolves through oklab.
+v4's own default palette included) or `color(srgb ...)` (every `color-mix()`) regardless of how the
+color was originally authored, and html2canvas can't parse any of them — capture rejects with
+`SnapshotRenderError` instead of producing a thumbnail. `CaptureOptions.neutralizeColors` fixes that:
+rewrites them (plus `lab()`/`lch()`) to a plain `hsl()` in html2canvas's clone of `el` — the live
+page is never touched.
 
 ```ts
 await snapshots.capture(el, id, { neutralizeColors: true });
 ```
 
-Off by default — most pages never hit this, and it costs a full-document style walk plus an
+Off by default — most pages never hit this, and it costs a style walk over `el`'s subtree plus an
 on-demand import of `colorjs.io`, so it's not worth paying for unconditionally. `CaptureOptions.onclone`
 is still there too, passed straight through to html2canvas's own `onclone`, for anything else that
 needs the actual clone rather than the live element.
